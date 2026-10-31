@@ -5,137 +5,355 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>朝食ビュッフェ（仮）</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍳</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #fbf5ea;
-    --panel: #fffdf8;
-    --ink: #3b2f25;
-    --muted: #8a7a6a;
-    --line: #e6d9c4;
-    --accent: #d9822b;
+    --wall: #f6ecdb;
+    --linen: #fffdf7;
+    --paper: #fffaf0;
+    --ink: #3a2a1d;
+    --muted: #8c7660;
+    --line: #e7d8bf;
+    --brass: #b8893b;
+    --brass-light: #e9d3a3;
+    --wood: #8a5a36;
+    --wood-dark: #5e3a20;
+    --accent: #c8642a;
     --accent-ink: #fff;
-    --good: #3f8f4f;
+    --good: #4f8a3c;
     --bad: #c2463b;
+    --pancake: #e3a857;
     --c-brown: #8d5a3b;
     --c-red: #d2403a;
     --c-blue: #2f6db5;
-    --c-yellow: #e8b923;
+    --c-yellow: #e2b01c;
     --c-green: #4c9a45;
     --c-pink: #e47aa8;
+    --serif: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", serif;
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; background: var(--bg); color: var(--ink);
-    font-family: "Hiragino Maru Gothic ProN", "Hiragino Sans", "Yu Gothic", sans-serif;
+    margin: 0; color: var(--ink);
+    font-family: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif;
     font-size: 15px; line-height: 1.5;
+    background-color: var(--wall);
+    background-image:
+      radial-gradient(ellipse 70% 50% at 85% -10%, rgba(255, 223, 150, .55), transparent 70%),
+      repeating-linear-gradient(90deg, rgba(160, 120, 70, .045) 0 2px, transparent 2px 46px);
+    background-attachment: fixed;
+    min-height: 100vh;
   }
   button {
-    font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--panel);
+    font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--linen);
     color: var(--ink); border-radius: 10px; padding: 6px 14px;
+    transition: transform .1s, box-shadow .1s;
   }
-  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: bold; }
+  button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(90, 60, 30, .15); }
+  button.primary { background: var(--accent); border-color: #a9501f; color: var(--accent-ink); font-weight: 700; }
   button:disabled { opacity: .35; cursor: default; }
   .hidden { display: none !important; }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: 12px 16px 40px; }
-  h1 { font-size: 22px; margin: 4px 0 2px; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 14px 16px 40px; }
   .sub { color: var(--muted); font-size: 13px; }
+  .serif { font-family: var(--serif); }
+  .eyebrow { font-family: var(--serif); letter-spacing: .28em; font-size: 11px; color: var(--brass); }
+  .tong { display: inline-block; vertical-align: -2px; flex: none; }
+  .ornament { display: flex; align-items: center; gap: 10px; color: var(--brass); font-size: 12px; justify-content: center; }
+  .ornament::before, .ornament::after { content: ""; height: 1px; flex: 1; background: linear-gradient(90deg, transparent, var(--brass-light), transparent); }
 
-  /* ---------- 準備画面 ---------- */
-  #setup .box { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; max-width: 560px; margin: 24px auto; }
-  #setup .seat { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
-  #setup .seat input { flex: 1; min-width: 0; font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; }
-  #setup .seat select, #setup select { font: inherit; padding: 6px; border-radius: 8px; border: 1px solid var(--line); background: #fff; }
-  .rules { font-size: 13px; color: var(--muted); margin-top: 14px; }
-  .rules li { margin: 2px 0; }
+  /* ---------- 準備画面(メニューの表紙) ---------- */
+  .cover {
+    background: var(--paper); max-width: 580px; margin: 28px auto; padding: 30px 28px 24px;
+    border: 1px solid var(--brass-light); outline: 3px double var(--brass-light); outline-offset: -10px;
+    border-radius: 6px; box-shadow: 0 18px 40px rgba(90, 60, 30, .15); text-align: center;
+  }
+  .cover h1 { font-family: var(--serif); font-size: 34px; margin: 6px 0 2px; letter-spacing: .05em; }
+  .cover .hours { font-family: var(--serif); color: var(--muted); font-size: 13px; margin: 6px 0 18px; }
+  .cover .lead { font-size: 14px; margin: 0 0 14px; }
+  .cover .form { text-align: left; max-width: 400px; margin: 14px auto; }
+  .cover label.count { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 10px; font-family: var(--serif); }
+  .seat { display: flex; gap: 8px; align-items: center; margin: 6px 0; padding: 4px 0; border-bottom: 1px dotted var(--line); }
+  .seat input { flex: 1; min-width: 0; font: inherit; padding: 4px 6px; border: none; background: transparent; border-bottom: 1px solid transparent; }
+  .seat input:focus { outline: none; border-bottom-color: var(--brass); }
+  .seat select, #sel-count { font: inherit; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--linen); }
+  #btn-start { font-size: 17px; padding: 10px 28px; border-radius: 999px; margin-top: 6px; font-family: var(--serif); letter-spacing: .08em; }
+  .rules { font-size: 13px; color: var(--muted); text-align: left; margin: 18px 0 0; padding-left: 1.2em; }
+  .rules li { margin: 3px 0; }
 
-  /* ---------- ヘッダー ---------- */
+  /* ---------- ヘッダー(ホテルの看板) ---------- */
   .topbar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 13px; }
+  .topbar h1 { font-family: var(--serif); font-size: 24px; margin: 0; letter-spacing: .04em; }
+  .clockbox { display: flex; align-items: center; gap: 10px; background: var(--paper); border: 1px solid var(--brass-light); border-radius: 999px; padding: 4px 14px 4px 4px; box-shadow: 0 2px 8px rgba(90, 60, 30, .08); }
+  .clockbox .time { font-family: var(--serif); font-size: 20px; font-weight: 800; line-height: 1.1; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .chip { background: var(--paper); border: 1px solid var(--brass-light); border-radius: 6px; padding: 1px 10px; font-size: 12px; }
 
   /* ---------- ビュッフェ台 ---------- */
-  .board-scroll { overflow-x: auto; margin: 10px -16px 0; padding: 0 16px 6px; }
-  #board { display: grid; grid-template-columns: repeat(8, minmax(118px, 1fr)); gap: 8px; min-width: 990px; }
-  .slot { display: flex; flex-direction: column; gap: 6px; border-radius: 14px; padding: 4px; border: 2px solid transparent; }
-  .slot.target { border-color: var(--accent); background: #fff1df; cursor: pointer; }
-  .slot.target:hover { background: #ffe4c2; }
-  .card {
-    position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
-    min-height: 196px; padding: 0 8px 8px; overflow: hidden; display: flex; flex-direction: column;
+  .counter {
+    margin-top: 12px; border-radius: 18px 18px 10px 10px; padding: 14px 12px 0;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.0), rgba(255,255,255,0)),
+      repeating-linear-gradient(0deg, rgba(200, 170, 120, .07) 0 1px, transparent 1px 7px),
+      repeating-linear-gradient(90deg, rgba(200, 170, 120, .07) 0 1px, transparent 1px 7px),
+      var(--linen);
+    border: 1px solid var(--line);
+    box-shadow: 0 10px 0 var(--wood), 0 14px 0 var(--wood-dark), 0 22px 24px rgba(60, 35, 15, .25);
+    margin-bottom: 26px;
   }
-  .card .band { margin: 0 -8px 6px; padding: 3px 8px; color: #fff; font-size: 11px; display: flex; justify-content: space-between; white-space: nowrap; }
-  .card .emoji { font-size: 30px; text-align: center; line-height: 1.2; }
-  .card .name { font-weight: bold; text-align: center; font-size: 14px; }
-  .card .stats { display: flex; justify-content: center; gap: 8px; font-size: 12px; margin: 2px 0; white-space: nowrap; }
-  .card .stats b { font-size: 14px; }
-  .card .bonus { font-size: 11px; color: var(--muted); text-align: center; min-height: 2.8em; }
-  .card .tokens { margin-top: auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; min-height: 18px; }
-  .card .supply { font-size: 11px; text-align: center; color: var(--muted); }
-  .card.special { justify-content: center; align-items: center; text-align: center; background: repeating-linear-gradient(45deg, #fff8ec, #fff8ec 8px, #fdf0db 8px, #fdf0db 16px); }
-  .card.empty { justify-content: center; align-items: center; color: var(--muted); }
-  .tok { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(0,0,0,.18); display: inline-block; }
-  .stack { display: flex; flex-direction: column; gap: 3px; min-height: 30px; align-items: stretch; }
-  .piece { border-radius: 999px; color: #fff; font-size: 12px; padding: 1px 8px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .piece.top { box-shadow: 0 0 0 2px var(--ink) inset; font-weight: bold; }
-  .piece.now { outline: 3px solid var(--accent); outline-offset: 1px; }
+  .counter .label { display: flex; justify-content: space-between; align-items: baseline; padding: 0 6px 6px; }
+  .board-scroll { overflow-x: auto; padding-bottom: 12px; }
+  #board { display: grid; grid-template-columns: repeat(8, minmax(118px, 1fr)); gap: 8px; min-width: 990px; }
+  .slot { display: flex; flex-direction: column; align-items: stretch; gap: 6px; border-radius: 16px; padding: 4px; border: 2px dashed transparent; transition: background .15s; }
+  .slot.target { border-color: var(--accent); background: rgba(255, 222, 180, .35); cursor: pointer; }
+  .slot.target:hover { background: rgba(255, 210, 160, .6); }
+  .slot.target .plate { animation: glow 1.4s ease-in-out infinite; }
+  @keyframes glow { 50% { box-shadow: 0 0 0 5px rgba(200, 100, 42, .35), 0 4px 10px rgba(80, 50, 20, .2); } }
 
-  /* ---------- 手番パネル ---------- */
-  #action { background: var(--panel); border: 2px solid var(--accent); border-radius: 14px; padding: 10px 14px; margin: 10px 0; }
-  #action .who { font-weight: bold; font-size: 16px; }
+  .dish { display: flex; flex-direction: column; align-items: center; min-height: 246px; }
+  .placard {
+    width: 100%; background: #fff; border: 1px solid var(--line); border-radius: 4px;
+    padding: 0 6px 5px; text-align: center; position: relative; box-shadow: 0 2px 0 #eadcc4;
+  }
+  .placard .stripe { height: 5px; margin: 0 -6px 4px; border-radius: 4px 4px 0 0; }
+  .placard .genre { font-size: 10px; color: var(--muted); letter-spacing: .05em; }
+  .placard .name { font-family: var(--serif); font-weight: 800; font-size: 14px; line-height: 1.25; min-height: 2.5em; display: flex; align-items: center; justify-content: center; }
+  .placard .star { position: absolute; top: 7px; right: -4px; background: var(--brass); color: #fff; font-size: 9px; padding: 0 5px; border-radius: 3px 0 0 3px; letter-spacing: .05em; }
+  .plate {
+    width: 82px; height: 82px; border-radius: 50%; margin: 8px 0 4px; flex: none;
+    background: radial-gradient(circle at 50% 50%, #fff 0 52%, #f1ebe0 53% 56%, #fff 57% 100%);
+    border: 1px solid #e3d6c2;
+    box-shadow: 0 4px 10px rgba(80, 50, 20, .18);
+    display: flex; align-items: center; justify-content: center; font-size: 38px; position: relative;
+  }
+  .plate .left { position: absolute; bottom: -4px; right: -6px; background: var(--ink); color: #fff; font-size: 11px; border-radius: 999px; padding: 0 6px; }
+  .stats { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; margin: 2px 0; }
+  .pill { font-size: 11px; border-radius: 999px; padding: 0 7px; white-space: nowrap; border: 1px solid; }
+  .pill.full { color: #a24f1c; border-color: #efc7a6; background: #fff3e8; }
+  .pill.full.minus { color: #2f6db5; border-color: #bcd2ee; background: #eef4fc; }
+  .pill.sat { color: #8a6418; border-color: #ead49d; background: #fff8e2; }
+  .dish .bonus { font-size: 10.5px; color: var(--muted); text-align: center; min-height: 2.6em; line-height: 1.3; margin-top: 2px; }
+  .dish .tokens { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; min-height: 14px; }
+  .dish .supply { font-size: 10px; color: var(--muted); }
+  .tok { width: 13px; height: 13px; border-radius: 50%; display: inline-block; box-shadow: inset 0 -2px 0 rgba(0,0,0,.18), 0 1px 1px rgba(0,0,0,.15); }
+  .dish.empty .plate { opacity: .5; font-size: 13px; color: var(--muted); }
+
+  .station { min-height: 246px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 4px; }
+  .station .title { font-family: var(--serif); font-weight: 800; font-size: 15px; }
+  .deck { position: relative; width: 62px; height: 84px; margin: 6px 0; }
+  .deck i { position: absolute; inset: 0; border-radius: 6px; border: 1px solid #c9b48f;
+    background: repeating-linear-gradient(45deg, #f7efe0 0 5px, #efe2c9 5px 10px); }
+  .deck i:nth-child(1) { transform: translate(4px, 4px); }
+  .deck i:nth-child(2) { transform: translate(2px, 2px); }
+  .deck b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--serif); font-size: 18px; }
+  .evcard { width: 62px; height: 84px; border-radius: 6px; margin: 6px 0; display: flex; align-items: center; justify-content: center; position: relative;
+    background: radial-gradient(circle, transparent 0 40%, rgba(255,255,255,.05) 41%), repeating-linear-gradient(-45deg, #2d4a6b 0 6px, #335476 6px 12px);
+    border: 2px solid var(--brass); color: var(--brass-light); font-family: var(--serif); font-size: 11px; letter-spacing: .1em; box-shadow: 3px 3px 0 #23384f; }
+  .evcard.none { background: none; border-style: dashed; box-shadow: none; color: var(--muted); }
+
+  .stack { display: flex; flex-direction: column; gap: 3px; min-height: 26px; }
+  .piece { display: flex; align-items: center; gap: 4px; border-radius: 999px; color: #fff; font-size: 12px; padding: 1px 8px 1px 6px; white-space: nowrap; overflow: hidden; box-shadow: inset 0 -2px 0 rgba(0,0,0,.2); }
+  .piece span { overflow: hidden; text-overflow: ellipsis; }
+  .piece.top::after { content: "上"; margin-left: auto; font-size: 9px; background: rgba(255,255,255,.3); border-radius: 4px; padding: 0 3px; }
+  .piece.now { outline: 3px solid var(--accent); outline-offset: 1px; font-weight: 700; }
+
+  /* ---------- 手番パネル(伝票) ---------- */
+  #action {
+    background: var(--paper); border: 1px solid var(--line); border-left: 6px solid var(--accent);
+    border-radius: 10px; padding: 10px 16px; margin: 10px 0 14px; box-shadow: 0 4px 12px rgba(90, 60, 30, .08);
+  }
+  #action .who { font-family: var(--serif); font-weight: 800; font-size: 17px; display: flex; align-items: center; gap: 6px; }
   #action .moves { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-  #action .moves button { min-width: 92px; }
-  #action .hint { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  #action .moves button { min-width: 96px; border-radius: 8px; border-style: dashed; line-height: 1.3; padding: 6px 12px; }
+  #action .moves button.primary { border-style: solid; }
+  #action .moves small { font-size: 11px; }
+  #action .hint { color: var(--muted); font-size: 13px; margin-top: 6px; }
 
-  /* ---------- プレイヤー ---------- */
-  #players { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
-  .pl { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
-  .pl.active { border: 2px solid var(--accent); }
-  .pl .head { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
-  .pl .nm { font-weight: bold; display: flex; align-items: center; gap: 6px; }
-  .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-  .sat { font-size: 20px; font-weight: bold; }
-  .sat small { font-size: 12px; color: var(--muted); font-weight: normal; }
-  .tray { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin: 8px 0; background: #f3e8d6; padding: 6px; border-radius: 10px; }
-  .cell { aspect-ratio: 1.35; border-radius: 8px; background: #fff; border: 1px dashed #d8c7ab; display: flex; align-items: center; justify-content: center; font-size: 22px; position: relative; }
+  /* ---------- プレイヤー(各テーブル) ---------- */
+  #players { display: grid; grid-template-columns: repeat(auto-fill, minmax(262px, 1fr)); gap: 12px; }
+  .pl { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 12px; box-shadow: 0 3px 10px rgba(90, 60, 30, .07); }
+  .pl.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent), 0 6px 16px rgba(200, 100, 42, .2); }
+  .pl .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .pl .nm { font-family: var(--serif); font-weight: 800; font-size: 16px; display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .pl .ranks { font-size: 11px; color: var(--muted); }
+  .pancake { display: flex; align-items: center; gap: 6px; }
+  .pancake .disc {
+    width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-family: var(--serif); font-weight: 800; font-size: 19px; color: #5a3410;
+    background: radial-gradient(circle at 40% 35%, #f6d08a, var(--pancake) 60%, #c98a3a);
+    box-shadow: 0 3px 0 #b8782e, 0 6px 0 #d89a4b, 0 8px 6px rgba(80,50,20,.2);
+  }
+  .pancake small { font-size: 11px; color: var(--muted); line-height: 1.2; }
+
+  .belly { margin: 12px 0 4px; }
+  .belly .lbl { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+  .belly .lbl b { color: var(--ink); font-size: 15px; }
+  .segs { position: relative; display: grid; grid-template-columns: repeat(13, 1fr); gap: 2px; margin-top: 3px; }
+  .segs i { height: 12px; background: #efe3cf; border-radius: 3px; }
+  .segs i.on { background: linear-gradient(180deg, #f3b56f, #e07a32); }
+  .segs i.over { background: linear-gradient(180deg, #e98479, var(--bad)); }
+  .segs .cap { position: absolute; top: -5px; bottom: -5px; width: 3px; margin-left: -1px; background: var(--good); border-radius: 2px; }
+  .burst { color: var(--bad); font-weight: 700; }
+
+  .tray {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 12px 4px 10px; padding: 10px 14px;
+    border-radius: 14px; position: relative;
+    background: linear-gradient(180deg, #a06a40, #8a5a36);
+    box-shadow: inset 0 0 0 3px #b8804f, inset 0 2px 6px rgba(0,0,0,.25), 0 3px 0 var(--wood-dark);
+  }
+  .tray::before, .tray::after { content: ""; position: absolute; top: 50%; width: 10px; height: 26px; margin-top: -13px; background: var(--wood-dark); border-radius: 4px; }
+  .tray::before { left: -6px; }
+  .tray::after { right: -6px; }
+  .cell {
+    aspect-ratio: 1; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; position: relative;
+    background: radial-gradient(circle, #fff 0 55%, #f1ebe0 56% 60%, #fff 61%);
+    box-shadow: 0 2px 3px rgba(0,0,0,.25); max-width: 62px; justify-self: center; width: 100%;
+  }
+  .cell.vacant { background: rgba(255, 255, 255, .14); box-shadow: inset 0 1px 3px rgba(0,0,0,.3); }
   .cell.filled { border: 3px solid; }
-  .cell.pick { cursor: pointer; border: 2px solid var(--accent); background: #fff1df; }
-  .cell.pick:hover { background: #ffdcae; }
-  .cell .gain { position: absolute; bottom: 1px; right: 4px; font-size: 11px; color: var(--accent); font-weight: bold; }
-  .meter { position: relative; height: 16px; border-radius: 8px; background: #efe4d2; overflow: visible; margin: 4px 0 14px; }
-  .meter .fill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, #f2c27b, #e0782f); transition: width .3s; }
-  .meter.burst .fill { background: var(--bad); }
-  .meter .cap { position: absolute; top: -4px; bottom: -4px; width: 3px; background: var(--good); border-radius: 2px; }
-  .meter .ticks { position: absolute; left: 0; right: 0; top: 17px; display: flex; justify-content: space-between; font-size: 9px; color: var(--muted); }
-  .lunch { font-size: 12px; background: #f6efe2; border-radius: 8px; padding: 4px 8px; }
-  .lunch.secret { color: var(--muted); }
+  .cell.pick { cursor: pointer; background: radial-gradient(circle, #fff6e8 0 60%, #ffe2bd 61%); box-shadow: 0 0 0 3px #ffd59a; animation: pulse 1.2s ease-in-out infinite; opacity: .95; }
+  .cell.pick:hover { box-shadow: 0 0 0 4px #fff; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(255, 213, 154, .55); } }
+  .cell .gain { position: absolute; bottom: -4px; right: -6px; font-size: 11px; color: #fff; background: var(--accent); border-radius: 999px; padding: 0 5px; font-weight: 700; }
 
-  /* ---------- ログ ---------- */
-  .lower { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
-  #log { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; max-height: 220px; overflow-y: auto; font-size: 13px; }
-  #log div { padding: 2px 0; border-bottom: 1px dotted var(--line); }
-  #log .ev { color: var(--accent); font-weight: bold; }
+  .lunch {
+    position: relative; font-size: 12px; background: #fff; border: 1px dashed var(--brass); border-radius: 8px; padding: 6px 10px 6px 14px;
+  }
+  .lunch::before, .lunch::after { content: ""; position: absolute; left: -7px; width: 12px; height: 12px; border-radius: 50%; background: var(--paper); border: 1px dashed var(--brass); top: 50%; margin-top: -6px; }
+  .lunch::after { left: auto; right: -7px; }
+  .lunch .rsv { font-family: var(--serif); letter-spacing: .2em; font-size: 10px; color: var(--brass); }
+  .lunch .nm2 { font-family: var(--serif); font-weight: 800; font-size: 14px; }
+  .lunch.secret { color: var(--muted); background: repeating-linear-gradient(-45deg, #fbf4e6 0 6px, #f6ecd8 6px 12px); }
+
+  /* ---------- ログ(朝食の記録) ---------- */
+  .lower { margin-top: 14px; }
+  .lower h3 { font-family: var(--serif); font-size: 14px; margin: 0 0 4px; color: var(--muted); }
+  #log {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 6px 14px; max-height: 220px; overflow-y: auto; font-size: 13px;
+  }
+  #log div { padding: 4px 0; border-bottom: 1px solid #efe2cc; }
+  #log div:last-child { border-bottom: none; }
+  #log .ev { color: var(--accent); font-weight: 700; }
 
   /* ---------- モーダル・トースト ---------- */
-  .overlay { position: fixed; inset: 0; background: rgba(40,30,20,.45); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 10; }
-  .modal { background: var(--panel); border-radius: 16px; padding: 18px; max-width: 640px; width: 100%; max-height: 92vh; overflow-y: auto; }
-  .modal h2 { margin: 0 0 8px; font-size: 18px; }
-  .lunch-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-  .lcard { border: 2px solid var(--line); border-radius: 12px; padding: 10px; cursor: pointer; background: #fff; }
-  .lcard:hover { border-color: var(--accent); }
-  .lcard .big { font-size: 30px; }
-  .lcard .t { font-weight: bold; }
-  .lcard dl { display: grid; grid-template-columns: auto 1fr; gap: 0 8px; font-size: 13px; margin: 6px 0 0; }
+  .overlay { position: fixed; inset: 0; background: rgba(50, 32, 18, .5); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 10; backdrop-filter: blur(2px); }
+  .modal {
+    background: var(--paper); border-radius: 6px; padding: 22px; max-width: 660px; width: 100%; max-height: 92vh; overflow-y: auto;
+    border: 1px solid var(--brass-light); outline: 3px double var(--brass-light); outline-offset: -9px; box-shadow: 0 20px 50px rgba(0,0,0,.3);
+  }
+  .modal h2 { font-family: var(--serif); margin: 0 0 6px; font-size: 21px; text-align: center; }
+  .modal .sub { text-align: center; }
+  .lunch-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+  .lcard {
+    position: relative; border: 1px dashed var(--brass); border-radius: 10px; padding: 12px 14px; cursor: pointer; background: #fff;
+    transition: transform .12s, box-shadow .12s;
+  }
+  .lcard:hover { transform: translateY(-3px) rotate(-.5deg); box-shadow: 0 8px 18px rgba(90, 60, 30, .18); border-style: solid; }
+  .lcard .rsv { font-family: var(--serif); letter-spacing: .25em; font-size: 10px; color: var(--brass); text-align: center; }
+  .lcard .big { font-size: 38px; text-align: center; line-height: 1.3; }
+  .lcard .t { font-family: var(--serif); font-weight: 800; font-size: 17px; text-align: center; }
+  .lcard dl { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; font-size: 13px; margin: 8px 0 0; border-top: 1px dotted var(--line); padding-top: 6px; }
   .lcard dt { color: var(--muted); }
   .lcard dd { margin: 0; }
-  table.res { border-collapse: collapse; width: 100%; font-size: 13px; }
-  table.res th, table.res td { border-bottom: 1px solid var(--line); padding: 4px 6px; text-align: right; }
-  table.res th:first-child, table.res td:first-child { text-align: left; }
-  table.res tr.total td { font-weight: bold; font-size: 15px; }
-  .win { color: var(--accent); font-weight: bold; }
-  #toast { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 12px; z-index: 20; max-width: calc(100% - 32px); text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+  .modal .actions { text-align: center; margin-top: 14px; }
+  table.res { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 8px; }
+  table.res th, table.res td { border-bottom: 1px dotted var(--line); padding: 5px 6px; text-align: right; }
+  table.res th { font-family: var(--serif); }
+  table.res th:first-child, table.res td:first-child { text-align: left; color: var(--muted); }
+  table.res tr.total td { font-family: var(--serif); font-weight: 800; font-size: 17px; border-top: 2px solid var(--brass-light); border-bottom: none; }
+  .win { color: var(--accent); font-weight: 700; }
+  .winner { text-align: center; font-family: var(--serif); font-size: 18px; color: var(--accent); margin: 4px 0; }
+  #toast {
+    position: fixed; left: 50%; top: 16px; transform: translateX(-50%); z-index: 20; max-width: calc(100% - 32px); text-align: center;
+    background: #2d4a6b; color: #fff; padding: 12px 22px; border-radius: 8px; border: 2px solid var(--brass);
+    box-shadow: 0 10px 28px rgba(0,0,0,.3); font-size: 14px;
+  }
+  #toast b { font-family: var(--serif); font-size: 16px; color: var(--brass-light); }
+
+  button, .slot, .cell, .lcard { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  .phone-only { display: none; }
 
   @media (max-width: 600px) {
     .lunch-opts { grid-template-columns: 1fr; }
+    .cover { padding: 24px 18px; }
+    .cover h1 { font-size: 28px; }
+    .desk-only { display: none; }
+    .phone-only { display: block; }
+    .tray.phone-only { display: grid; }
+
+    /* ヘッダー */
+    .topbar h1 { font-size: 20px; }
+    .clockbox { padding: 2px 12px 2px 2px; }
+    .clockbox .time { font-size: 17px; }
+
+    /* ビュッフェ台: 横スクロールをやめ、スタート→ゴールを縦に並べる */
+    .counter { padding: 10px 8px 4px; }
+    .board-scroll { overflow: visible; padding-bottom: 6px; }
+    #board { grid-template-columns: 1fr; min-width: 0; gap: 4px; }
+    .slot { flex-direction: row; align-items: center; gap: 8px; padding: 6px; border-bottom: 1px dotted var(--line); border-radius: 12px; }
+    .slot > :first-child { flex: 1; min-width: 0; }
+    .stack { width: 92px; flex: none; min-height: 0; }
+    .piece { font-size: 11px; }
+    .dish {
+      display: grid; grid-template-columns: 56px 1fr; column-gap: 10px; align-items: center; min-height: 0;
+      grid-template-areas: "plate card" "plate stats" "plate bonus";
+      border-left: 4px solid var(--col); padding-left: 8px;
+    }
+    .placard { grid-area: card; background: none; border: none; box-shadow: none; padding: 0; text-align: left; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+    .placard .stripe { display: none; }
+    .placard .name { min-height: 0; justify-content: flex-start; font-size: 14px; order: -1; }
+    .placard .star { position: static; border-radius: 3px; }
+    .plate { grid-area: plate; width: 56px; height: 56px; font-size: 28px; margin: 0; }
+    .plate .left { right: -8px; bottom: -6px; }
+    .stats { grid-area: stats; justify-content: flex-start; }
+    .dish .bonus { grid-area: bonus; text-align: left; min-height: 0; }
+    .dish .tokens, .dish .supply { display: none; }
+    .dish.empty .plate { font-size: 10px; }
+    .station { flex-direction: row; min-height: 0; justify-content: flex-start; gap: 10px; text-align: left; flex-wrap: wrap; }
+    .station .title { font-size: 14px; }
+    .deck, .evcard { width: 36px; height: 48px; margin: 0; order: -1; }
+    .deck b { font-size: 14px; }
+    .evcard { font-size: 7px; box-shadow: 2px 2px 0 #23384f; }
+
+    /* 手番パネル: 画面下に固定して、いつでもボタンに届くように */
+    #action {
+      position: sticky; bottom: 0; z-index: 5; margin: 10px -16px 14px; border-radius: 14px 14px 0 0;
+      border-left: none; border-top: 4px solid var(--accent);
+      padding: 8px 12px calc(10px + env(safe-area-inset-bottom));
+      box-shadow: 0 -6px 18px rgba(90, 60, 30, .18);
+    }
+    #action .who { font-size: 15px; }
+    #action .moves { display: grid; grid-template-columns: repeat(auto-fit, minmax(62px, 1fr)); gap: 6px; }
+    #action .moves button { min-width: 0; padding: 6px 4px; min-height: 48px; }
+    #action .moves small { font-size: 10px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #action .hint { font-size: 12px; margin-top: 4px; }
+    #action .tray { max-width: 200px; margin: 6px auto 2px; }
+
+    /* プレイヤー: 2列のコンパクト表示 */
+    #players { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .pl { padding: 8px; }
+    .pl .head > div:first-child { min-width: 0; }
+    .pl .nm { font-size: 14px; white-space: nowrap; }
+    .pl .nm span { overflow: hidden; text-overflow: ellipsis; }
+    .pl .nm .sub { font-size: 10px; }
+    .pancake small { display: none; }
+    .pancake .disc { width: 34px; height: 34px; font-size: 15px; box-shadow: 0 2px 0 #b8782e, 0 4px 0 #d89a4b; }
+    .belly { margin: 6px 0 2px; }
+    .belly .lbl { font-size: 11px; }
+    .segs i { height: 8px; }
+    .tray { gap: 4px; padding: 6px 9px; margin: 8px 2px; border-radius: 10px; }
+    .tray::before, .tray::after { width: 6px; height: 18px; margin-top: -9px; }
+    .tray::before { left: -4px; }
+    .tray::after { right: -4px; }
+    .cell { font-size: 18px; }
+    .cell.filled { border-width: 2px; }
+    .lunch { font-size: 11px; padding: 4px 8px 4px 10px; }
+    .lunch .nm2 { font-size: 12px; }
+    .lunch .rsv { font-size: 8px; letter-spacing: .1em; }
+    .lunch button { padding: 2px 8px; font-size: 11px; margin-top: 2px; }
+  }
+
+  @media (max-width: 340px) {
     #players { grid-template-columns: 1fr; }
   }
 </style>
@@ -144,23 +362,27 @@
 
 <!-- ================= 準備画面 ================= -->
 <div id="setup" class="wrap">
-  <div class="box">
-    <h1>🍳 朝食ビュッフェ（仮）</h1>
-    <div class="sub">12:00 の絶品ランチに備えて、腹八分目で満足度を稼ごう。2〜4人・ビュッフェ台を2周。</div>
-    <p>
-      人数
-      <select id="sel-count">
-        <option value="2">2人</option>
-        <option value="3">3人</option>
-        <option value="4" selected>4人</option>
-      </select>
-    </p>
-    <div id="seats"></div>
-    <p><button id="btn-start" class="primary">ゲーム開始</button></p>
+  <div class="cover">
+    <div class="eyebrow">HOTEL BREAKFAST BUFFET</div>
+    <h1>朝食ビュッフェ<span style="font-size:.5em">（仮）</span></h1>
+    <div class="hours">朝食 7:00 – 11:00　／　ランチのご予約 12:00</div>
+    <div class="ornament">✦</div>
+    <p class="lead">ビュッフェ台を2周。ランチが入る腹八分目をキープして、<br>いちばん満足した人の勝ち。</p>
+    <div class="form">
+      <label class="count">ご利用人数
+        <select id="sel-count">
+          <option value="2">2名</option>
+          <option value="3">3名</option>
+          <option value="4" selected>4名</option>
+        </select>
+      </label>
+      <div id="seats"></div>
+    </div>
+    <button id="btn-start" class="primary">ビュッフェ会場へ</button>
     <ul class="rules">
-      <li>一番後ろ（同じマスなら一番上）のコマの人が手番。0〜4マス進む。</li>
-      <li>誰もいない料理マスに止まったら料理を1個取ってトレイに置く。誰かいたら相乗り（取れないが次の手番が早い）。</li>
-      <li>同じ料理はその場で「おかわり（0マス移動）」して2個まで取れる。</li>
+      <li>一番後ろ（同じマスなら一番上）のトングの人が手番。0〜4マス進む。</li>
+      <li>誰もいない料理に止まったら1個取ってトレイへ。先客がいたら相乗り（取れないが次の手番が早い）。</li>
+      <li>同じ料理はその場で「おかわり（0マス）」して2個まで取れる。</li>
       <li>満腹度がランチ予定カードの上限以下ならランチ成功。13 に達するとバースト（−5点）。</li>
       <li>トレイに6色そろえば＋6、上段か下段が同色3つなら1列につき＋3。</li>
     </ul>
@@ -171,15 +393,20 @@
 <div id="game" class="wrap hidden">
   <div class="topbar">
     <div>
-      <h1>🍳 朝食ビュッフェ（仮）</h1>
-      <div class="sub" id="status-line"></div>
+      <div class="eyebrow">HOTEL BREAKFAST BUFFET</div>
+      <h1>朝食ビュッフェ<span style="font-size:.55em">（仮）</span></h1>
+      <div class="chips" id="chips"></div>
     </div>
-    <div class="chips" id="chips"></div>
+    <div class="clockbox" id="clock"></div>
   </div>
-  <div class="board-scroll"><div id="board"></div></div>
+  <div class="counter">
+    <div class="label"><span class="eyebrow">BUFFET COUNTER</span><span class="sub" id="status-line"></span></div>
+    <div class="board-scroll"><div id="board"></div></div>
+  </div>
   <div id="action"></div>
   <div id="players"></div>
   <div class="lower">
+    <h3>本日の朝食記録</h3>
     <div id="log"></div>
   </div>
 </div>
@@ -252,7 +479,7 @@ const LUNCHES = [
   { id: 'cafe',    name: 'パンケーキカフェ', emoji: '🥞', cap: 8, base: 7, exact: 2, affPts: 3, affText: '桃が0個',             aff: c => c.pink === 0 },
 ];
 
-const PIECE_COLORS = ['#5b6b7a', '#1f3f73', '#e0782f', '#7a4aa0'];
+const PIECE_COLORS = ['#6f7c88', '#24467a', '#b8642e', '#7a4aa0'];   // 銀・紺・銅・紫のトング
 const MAX_FULL = 13;
 const START = 0, GOAL = 7;               // 0=スタート、1〜6=料理マス、7=ゴール
 const ROWS = [[0, 1, 2], [3, 4, 5]];
@@ -367,12 +594,13 @@ function nextLunchChoice() {
   if (!p) { closeModal(); G.phase = 'play'; advance(); return; }
   const showChoice = () => {
     openModal(`
-      <h2>${esc(p.name)} さんのランチ予定カード</h2>
-      <div class="sub">場の定番料理を見てから、1枚を選んで伏せます（もう1枚は箱へ）。</div>
+      <div class="eyebrow" style="text-align:center">LUNCH RESERVATION</div>
+      <h2>${esc(p.name)} さまのランチのご予約</h2>
+      <div class="sub">ビュッフェ台の定番料理を見てから、1枚を選んで伏せます（もう1枚は箱へ）。</div>
       <div class="lunch-opts">${p.lunchOpts.map((l, k) => `
         <div class="lcard" data-lunch="${k}">${lunchCardHtml(l)}</div>`).join('')}
       </div>
-      <p class="sub">ボードを確認するには <button id="btn-hide-modal">一旦閉じる</button></p>`);
+      <div class="actions"><button id="btn-hide-modal">ビュッフェ台を見る</button></div>`);
     document.querySelectorAll('[data-lunch]').forEach(el => el.onclick = () => {
       p.lunch = p.lunchOpts[+el.dataset.lunch];
       log(`${p.name} がランチ予定カードを1枚伏せた。`);
@@ -387,9 +615,9 @@ function nextLunchChoice() {
     };
   };
   if (humans().length > 1) {
-    openModal(`<h2>${esc(p.name)} さんの番です</h2>
-      <p>他の人には見えないようにしてください。</p>
-      <button class="primary" id="btn-ready">見る</button>`);
+    openModal(`<h2>${esc(p.name)} さまへ</h2>
+      <p class="sub">ランチのご予約を選びます。ほかの人には見えないようにしてください。</p>
+      <div class="actions"><button class="primary" id="btn-ready">見る</button></div>`);
     $('#btn-ready').onclick = showChoice;
   } else {
     showChoice();
@@ -397,8 +625,9 @@ function nextLunchChoice() {
 }
 
 function lunchCardHtml(l) {
-  return `<div class="big">${l.emoji}</div>
-    <div class="t">12:00 ${esc(l.name)}</div>
+  return `<div class="rsv">RESERVATION 12:00</div>
+    <div class="big">${l.emoji}</div>
+    <div class="t">${esc(l.name)}</div>
     <dl>
       <dt>満腹度上限</dt><dd><b>${l.cap}</b> 以下で成功</dd>
       <dt>基礎満足度</dt><dd>＋${l.base}</dd>
@@ -518,7 +747,7 @@ function arriveGoal(p) {
     G.revealed.push(ev);
     applyEvent(ev, p);
     log(`イベント「${ev.name}」発動：${ev.text}`, 'ev');
-    toast(`${ev.emoji} イベント「${ev.name}」<br>${ev.text}`);
+    toast(`${ev.emoji} <b>${ev.name}</b><br>${ev.text}`);
   }
   const relief = rank === 1 ? 2 : rank === 2 ? 1 : 0;
   if (relief) {
@@ -553,7 +782,7 @@ function endLap() {
   G.finish = [];
   G.lap = 2;
   log('全員ゴール！ 料理を総入れ替えして2周目へ。', 'ev');
-  toast('🔁 2周目スタート！ 料理が総入れ替えされました');
+  toast('🔁 <b>2周目スタート</b><br>料理が総入れ替えされました');
   advance();
 }
 
@@ -590,8 +819,10 @@ function showResult() {
   const names = winners.map(i => esc(G.players[i].name)).join('・');
   const row = (label, f) => `<tr><td>${label}</td>${cols.map(r => `<td>${f(r)}</td>`).join('')}</tr>`;
   openModal(`
-    <h2>🕛 12:00 ランチタイム！</h2>
-    <p class="win">🏆 勝者：${names}</p>
+    <div class="eyebrow" style="text-align:center">12:00 LUNCH TIME</div>
+    <h2>🕛 ランチタイム！</h2>
+    <div class="ornament">✦</div>
+    <p class="winner">🏆 いちばん満足したのは ${names}</p>
     <div style="overflow-x:auto">
     <table class="res">
       <tr><th></th>${cols.map(r => `<th>${esc(r.p.name)}</th>`).join('')}</tr>
@@ -607,7 +838,7 @@ function showResult() {
       <tr class="total"><td>合計</td>${cols.map(r => `<td class="${G.result.winners.includes(r.p.i) ? 'win' : ''}">${r.s.total}</td>`).join('')}</tr>
     </table>
     </div>
-    <p><button class="primary" id="btn-again">もう一度遊ぶ</button> <button id="btn-close">盤面を見る</button></p>`);
+    <div class="actions"><button class="primary" id="btn-again">もう一度遊ぶ</button> <button id="btn-close">盤面を見る</button></div>`);
   $('#btn-again').onclick = () => { closeModal(); $('#game').classList.add('hidden'); $('#setup').classList.remove('hidden'); };
   $('#btn-close').onclick = closeModal;
 }
@@ -697,11 +928,47 @@ function render() {
   renderPlayers();
 }
 
+// トング型コマのアイコン
+function tongSvg(color, size = 14) {
+  return `<svg class="tong" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 2.5 L5 20.5 M12 2.5 L19 20.5" fill="none" stroke="${color}" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M3 20.5h5M16 20.5h5" stroke="${color}" stroke-width="2.6" stroke-linecap="round"/>
+    <circle cx="12" cy="3" r="2" fill="${color}"/></svg>`;
+}
+
+// 進み具合を朝の時刻にする(1周目 7:00〜9:00、2周目 9:00〜11:00、終了で 12:00)
+function gameMinutes() {
+  if (G.phase === 'end') return 12 * 60;
+  const avg = G.players.reduce((a, p) => a + p.pos, 0) / G.n / GOAL;
+  return 7 * 60 + Math.round(((G.lap - 1) + avg) / 2 * 240 / 5) * 5;
+}
+
+function clockSvg(min) {
+  const h = (min / 60) % 12, m = min % 60;
+  const hand = (deg, len, w, col) => {
+    const r = (deg - 90) * Math.PI / 180;
+    return `<line x1="20" y1="20" x2="${20 + Math.cos(r) * len}" y2="${20 + Math.sin(r) * len}" stroke="${col}" stroke-width="${w}" stroke-linecap="round"/>`;
+  };
+  const ticks = Array.from({ length: 12 }, (_, i) => {
+    const r = i * 30 * Math.PI / 180;
+    return `<circle cx="${20 + Math.sin(r) * 15.5}" cy="${20 - Math.cos(r) * 15.5}" r="${i % 3 ? .8 : 1.4}" fill="#b8893b"/>`;
+  }).join('');
+  return `<svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
+    <circle cx="20" cy="20" r="19" fill="#fff" stroke="#b8893b" stroke-width="2"/>${ticks}
+    ${hand(h * 30, 9, 2.6, '#3a2a1d')}${hand(m * 6, 13, 1.6, '#3a2a1d')}
+    <circle cx="20" cy="20" r="1.8" fill="#c8642a"/></svg>`;
+}
+
 function renderStatus() {
   const left = G.events.length - G.revealed.length;
-  $('#status-line').textContent = `${G.lap}周目 / 全2周　山札 ${G.deck.length}枚`;
+  const min = gameMinutes();
+  const hh = Math.floor(min / 60), mm = String(min % 60).padStart(2, '0');
+  const toLunch = 12 * 60 - min;
+  $('#clock').innerHTML = `${clockSvg(min)}<div><div class="time">${hh}:${mm}</div>
+    <div class="sub">${toLunch > 0 ? `ランチまであと ${Math.floor(toLunch / 60)}時間${toLunch % 60 ? (toLunch % 60) + '分' : ''}` : 'ランチタイム！'}</div></div>`;
+  $('#status-line').textContent = `${G.lap}周目 / 全2周`;
   $('#chips').innerHTML = [
-    `<span class="chip">イベント 残り${left}枚</span>`,
+    `<span class="chip">伏せたイベント 残り${left}枚</span>`,
     ...G.revealed.map(e => `<span class="chip" title="${esc(e.text)}">${e.emoji} ${esc(e.name)}</span>`),
   ].join('');
 }
@@ -709,7 +976,7 @@ function renderStatus() {
 function pieceHtml(pi, isTop) {
   const p = G.players[pi];
   const now = G.current === pi && G.phase !== 'end';
-  return `<div class="piece ${isTop ? 'top' : ''} ${now ? 'now' : ''}" style="background:${p.color}">${esc(p.name)}</div>`;
+  return `<div class="piece ${isTop ? 'top' : ''} ${now ? 'now' : ''}" style="background:${p.color}">${tongSvg('#fff', 13)}<span>${esc(p.name)}</span></div>`;
 }
 
 function stackHtml(pos) {
@@ -717,18 +984,22 @@ function stackHtml(pos) {
   return `<div class="stack">${st.slice().reverse().map((pi, k) => pieceHtml(pi, k === 0 && st.length > 1)).join('')}</div>`;
 }
 
-function cardHtml(sq) {
+function dishHtml(sq) {
   const c = sq.card;
-  if (!c) return `<div class="card empty">（料理なし）</div>`;
+  if (!c) return `<div class="dish empty"><div class="placard"><div class="stripe" style="background:var(--line)"></div><div class="genre">—</div><div class="name">品切れ</div></div><div class="plate">空き皿</div></div>`;
   const col = COLORS[c.color];
-  return `<div class="card">
-    <div class="band" style="background:${col.hex}"><span>${col.genre}</span><span>${c.star ? '★' : ''}</span></div>
-    <div class="emoji">${c.emoji}</div>
-    <div class="name">${esc(c.name)}</div>
-    <div class="stats"><span>満腹<b>${signed(c.full)}</b></span><span>満足<b>＋${c.sat}</b></span></div>
+  return `<div class="dish" style="--col:${col.hex}">
+    <div class="placard">
+      <div class="stripe" style="background:${col.hex}"></div>
+      ${c.star ? '<span class="star">定番</span>' : ''}
+      <div class="genre">${col.genre}</div>
+      <div class="name">${esc(c.name)}</div>
+    </div>
+    <div class="plate">${c.emoji}<span class="left">残${sq.tokens}</span></div>
+    <div class="stats"><span class="pill full ${c.full < 0 ? 'minus' : ''}">満腹${signed(c.full)}</span><span class="pill sat">満足＋${c.sat}</span></div>
     <div class="bonus">${bonusText(c.bonus)}</div>
-    <div class="supply">${supplyLabel(c)}・残り${sq.tokens}</div>
     <div class="tokens">${Array.from({ length: sq.tokens }, () => `<span class="tok" style="background:${col.hex}"></span>`).join('')}</div>
+    <div class="supply">${supplyLabel(c)}</div>
   </div>`;
 }
 
@@ -740,11 +1011,15 @@ function renderBoard() {
   const slots = [];
   for (let pos = START; pos <= GOAL; pos++) {
     let inner;
-    if (pos === START) inner = `<div class="card special"><div class="emoji">🍽️</div><b>スタート</b><div class="sub">料理の山札<br>${G.deck.length}枚</div></div>`;
-    else if (pos === GOAL) {
+    if (pos === START) {
+      inner = `<div class="station"><div class="title">トレイ置き場</div><div class="sub">スタート</div>
+        <div class="deck"><i></i><i></i><i></i><b>${G.deck.length}</b></div><div class="sub">料理の山札</div></div>`;
+    } else if (pos === GOAL) {
       const left = G.events.length - G.revealed.length;
-      inner = `<div class="card special"><div class="emoji">🏁</div><b>ゴール</b><div class="sub">${G.lap}周目<br>伏せたイベント ${left}枚</div><div class="sub">1着 満腹−2<br>2着 満腹−1</div></div>`;
-    } else inner = cardHtml(G.squares[pos - 1]);
+      inner = `<div class="station"><div class="title">お席へ</div><div class="sub">ゴール</div>
+        <div class="evcard ${left ? '' : 'none'}">${left ? 'EVENT' : 'なし'}</div>
+        <div class="sub">1着 満腹−2<br>2着 満腹−1</div></div>`;
+    } else inner = dishHtml(G.squares[pos - 1]);
     const t = targets.has(pos);
     slots.push(`<div class="slot ${t ? 'target' : ''}" ${t ? `data-move="${targets.get(pos)}"` : ''}>${inner}${stackHtml(pos)}</div>`);
   }
@@ -755,25 +1030,26 @@ function renderBoard() {
 function setAction(html) { $('#action').innerHTML = html; }
 
 function renderAction() {
-  if (G.phase === 'lunch') { setAction(`<div class="who">ランチ予定カードを選んでいます…</div>`); return; }
+  if (G.phase === 'lunch') { setAction(`<div class="who">ランチのご予約を確認中…</div>`); return; }
   if (G.phase === 'end') {
-    setAction(`<div class="who">ゲーム終了 — 勝者：${G.result.winners.map(i => esc(G.players[i].name)).join('・')}</div>
+    setAction(`<div class="who">🕛 12:00 — 勝者：${G.result.winners.map(i => esc(G.players[i].name)).join('・')}</div>
       <div class="moves"><button id="btn-result">結果を見る</button></div>`);
     $('#btn-result').onclick = showResult;
     return;
   }
   const p = G.players[G.current];
-  const head = `<div class="who"><span class="dot" style="background:${p.color}"></span> ${esc(p.name)} の手番${p.cpu ? '（CPU）' : ''}</div>`;
+  const head = `<div class="who">${tongSvg(p.color, 18)} ${esc(p.name)} の手番${p.cpu ? '<span class="sub">（CPU）</span>' : ''}</div>`;
   if (G.phase === 'place') {
     const c = G.squares[G.pending.s].card;
-    setAction(`${head}<div class="hint">${c.emoji}${esc(c.name)} をトレイのどこに置く？（${bonusText(c.bonus)}）${p.cpu ? '' : '— 下の自分のトレイで光っているマスをクリック'}</div>`);
+    setAction(`${head}<div class="hint">${c.emoji}${esc(c.name)} をトレイのどのお皿に盛る？（${bonusText(c.bonus)}）${p.cpu ? '' : '<span class="desk-only">— 光っているお皿をクリック</span>'}</div>
+      ${p.cpu ? '' : `<div class="tray phone-only">${trayCellsHtml(p, c)}</div>`}`);
     return;
   }
-  if (p.cpu) { setAction(`${head}<div class="hint">考え中…</div>`); return; }
+  if (p.cpu) { setAction(`${head}<div class="hint">料理を見比べています…</div>`); return; }
   const btns = legalMoves(p).map(m => {
     const info = landingInfo(p, m.k);
     let what;
-    if (info.kind === 'goal') what = 'ゴール';
+    if (info.kind === 'goal') what = 'お席へ（ゴール）';
     else if (info.kind === 'take') what = (m.k === 0 ? 'おかわり ' : '') + info.sq.card.emoji + info.sq.card.name;
     else if (info.kind === 'ride') what = '相乗り';
     else if (info.kind === 'full') what = 'トレイ満杯';
@@ -782,8 +1058,30 @@ function renderAction() {
   }).join('');
   setAction(`${head}
     <div class="moves">${btns}</div>
-    <div class="hint">ボード上の光っているマスをクリックしても進めます。</div>`);
+    <div class="hint desk-only">ビュッフェ台の光っている場所をクリックしても進めます。</div>`);
   document.querySelectorAll('#action [data-k]').forEach(el => el.onclick = () => doMove(p.i, +el.dataset.k));
+}
+
+function bellyHtml(p, cap) {
+  const segs = Array.from({ length: MAX_FULL }, (_, i) => {
+    const on = i < p.full;
+    return `<i class="${on ? (cap != null && i >= cap ? 'over' : 'on') : ''}"></i>`;
+  }).join('');
+  return `<div class="belly">
+    <div class="lbl"><span>満腹度 <b>${p.full}</b> / ${MAX_FULL}${p.full >= MAX_FULL ? ' <span class="burst">バースト！</span>' : ''}</span>${cap != null ? `<span style="color:var(--good)">ランチ上限 ${cap}</span>` : ''}</div>
+    <div class="segs">${segs}${cap != null ? `<div class="cap" style="left:calc(${cap / MAX_FULL * 100}%)"></div>` : ''}</div>
+  </div>`;
+}
+
+function trayCellsHtml(p, card) {
+  return p.tray.map((t, i) => {
+    if (t) return `<div class="cell filled" style="border-color:${COLORS[t.color].hex}" title="${esc(t.name)}">${t.emoji}</div>`;
+    if (card) {
+      const b = placementBonus(p.tray, i, card);
+      return `<div class="cell pick" data-cell="${i}">${card.emoji}${b ? `<span class="gain">＋${b}</span>` : ''}</div>`;
+    }
+    return `<div class="cell vacant"></div>`;
+  }).join('');
 }
 
 function renderPlayers() {
@@ -791,31 +1089,24 @@ function renderPlayers() {
   $('#players').innerHTML = G.players.map(p => {
     const picking = pend && pend.pi === p.i && !p.cpu;
     const card = pend ? G.squares[pend.s].card : null;
-    const cells = p.tray.map((t, i) => {
-      if (t) return `<div class="cell filled" style="border-color:${COLORS[t.color].hex}" title="${esc(t.name)}">${t.emoji}</div>`;
-      if (picking) {
-        const b = placementBonus(p.tray, i, card);
-        return `<div class="cell pick" data-cell="${i}">${card.emoji}${b ? `<span class="gain">＋${b}</span>` : ''}</div>`;
-      }
-      return `<div class="cell"></div>`;
-    }).join('');
+    const cells = trayCellsHtml(p, picking ? card : null);
     const see = !!p.lunch && canSeeLunch(p);
     const cap = see ? p.lunch.cap : null;
-    const lunchHtml = !p.lunch ? '<div class="lunch secret">ランチ予定：選択中</div>'
-      : see ? `<div class="lunch">🕛 ${p.lunch.emoji}${esc(p.lunch.name)}　上限 <b>${p.lunch.cap}</b>　基礎＋${p.lunch.base}　ピタリ＋${p.lunch.exact}<br>相性：${esc(p.lunch.affText)}なら＋${p.lunch.affPts}</div>`
-      : `<div class="lunch secret">🂠 ランチ予定（伏せ札）${!p.cpu && G.current === p.i && G.phase !== 'end' ? ' <button id="btn-peek">こっそり見る</button>' : ''}</div>`;
+    const lunchHtml = !p.lunch ? '<div class="lunch secret"><div class="rsv">RESERVATION 12:00</div>ご予約を選択中…</div>'
+      : see ? `<div class="lunch"><div class="rsv">RESERVATION 12:00</div>
+          <div class="nm2">${p.lunch.emoji} ${esc(p.lunch.name)}</div>
+          満腹度上限 <b>${p.lunch.cap}</b>・基礎＋${p.lunch.base}・ピタリ＋${p.lunch.exact}<br>相性：${esc(p.lunch.affText)}なら＋${p.lunch.affPts}</div>`
+      : `<div class="lunch secret"><div class="rsv">RESERVATION 12:00</div>ご予約内容は伏せてあります${!p.cpu && G.current === p.i && G.phase !== 'end' ? ' <button id="btn-peek">こっそり見る</button>' : ''}</div>`;
     const rk = p.ranks.map((r, k) => `${k + 1}周目${r}着`).join('・');
     return `<div class="pl ${G.current === p.i && G.phase !== 'end' ? 'active' : ''}">
       <div class="head">
-        <div class="nm"><span class="dot" style="background:${p.color}"></span>${esc(p.name)}${p.cpu ? ' <span class="sub">CPU</span>' : ''}</div>
-        <div class="sat">${p.sat}<small> 満足度</small></div>
+        <div>
+          <div class="nm">${tongSvg(p.color, 18)}<span>${esc(p.name)}</span>${p.cpu ? ' <span class="sub">CPU</span>' : ''}</div>
+          <div class="ranks">${rk || '&nbsp;'}</div>
+        </div>
+        <div class="pancake"><small>満足度</small><div class="disc">${p.sat}</div></div>
       </div>
-      <div class="sub">満腹度 <b style="color:var(--ink)">${p.full}</b> / ${MAX_FULL}${p.full >= MAX_FULL ? ' <b style="color:var(--bad)">バースト！</b>' : ''}${rk ? '　' + rk : ''}</div>
-      <div class="meter ${p.full >= MAX_FULL ? 'burst' : ''}">
-        <div class="fill" style="width:${p.full / MAX_FULL * 100}%"></div>
-        ${cap != null ? `<div class="cap" style="left:calc(${cap / MAX_FULL * 100}% - 1px)" title="ランチ上限"></div>` : ''}
-        <div class="ticks"><span>0</span><span>13</span></div>
-      </div>
+      ${bellyHtml(p, cap)}
       <div class="tray">${cells}</div>
       ${lunchHtml}
     </div>`;
@@ -852,7 +1143,7 @@ function renderSeats() {
   $('#seats').innerHTML = Array.from({ length: n }, (_, i) => {
     const s = prev[i] || { name: DEFAULT_NAMES[i], cpu: i > 0 };
     return `<div class="seat">
-      <span class="dot" style="background:${PIECE_COLORS[i]}"></span>
+      ${tongSvg(PIECE_COLORS[i], 20)}
       <input value="${esc(s.name)}" maxlength="8" aria-label="名前${i + 1}">
       <select aria-label="種類${i + 1}">
         <option value="human" ${s.cpu ? '' : 'selected'}>人間</option>

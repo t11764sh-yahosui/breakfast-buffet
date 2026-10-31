@@ -44,6 +44,46 @@ def check_end(page, n):
     check(len(g['winners']) >= 1 and page.is_visible('table.res'), f'{n}人: 結果表を表示 合計={g["totals"]}')
 
 
+def no_hscroll(page, where):
+    w = page.evaluate('[document.documentElement.scrollWidth, window.innerWidth]')
+    check(w[0] <= w[1], f'{where}: 横スクロールなし ({w[0]}px / {w[1]}px)')
+
+
+def play_human(page, url, tag, phone=False):
+    start(page, url, 4, 1)
+    if phone:
+        no_hscroll(page, 'ランチ選択')
+    page.locator('[data-lunch]').first.click()
+    page.screenshot(path=os.path.join(OUT, f'{tag}-1-board.png'), full_page=True)
+    shot_place = False
+    for _ in range(400):
+        st = page.evaluate("() => { const G = window.__state(); return { phase: G.phase, cur: G.current }; }")
+        if st['phase'] == 'end':
+            break
+        if st['cur'] != 0:
+            page.wait_for_timeout(20)
+            continue
+        if st['phase'] == 'place':
+            if not shot_place:
+                page.screenshot(path=os.path.join(OUT, f'{tag}-2-place.png'))
+                if phone:
+                    no_hscroll(page, '料理を置く場面')
+                    check(page.locator('#action [data-cell]').first.is_visible(), '手番パネル内でお皿を選べる')
+                shot_place = True
+            page.locator('[data-cell]:visible').first.click()
+        elif page.locator('#action [data-k]').count():
+            btns = page.locator('#action [data-k]')
+            if phone:
+                check(btns.first.is_visible(), '移動ボタンが画面内に見えている') if not shot_place else None
+            btns.nth(min(1, btns.count() - 1)).click()   # だいたい1マスずつ進む(0マスがあればおかわり)
+        else:
+            page.wait_for_timeout(20)
+    check_end(page, 4)
+    if phone:
+        no_hscroll(page, '結果画面')
+    page.screenshot(path=os.path.join(OUT, f'{tag}-3-result.png'), full_page=True)
+
+
 def run(headed):
     os.makedirs(OUT, exist_ok=True)
     srv = make_server(0)
@@ -63,30 +103,16 @@ def run(headed):
                 check_end(page, n)
         check(not errors, 'ページエラーなし ' + '; '.join(errors[:3]))
 
-        print('▶ 人間1人 + CPU3人を画面操作で遊ぶ', flush=True)
-        start(page, url, 4, 1)
-        page.locator('[data-lunch]').first.click()
-        page.screenshot(path=os.path.join(OUT, '1-board.png'), full_page=True)
-        shot_place = False
-        for _ in range(400):
-            st = page.evaluate("() => { const G = window.__state(); return { phase: G.phase, cur: G.current }; }")
-            if st['phase'] == 'end':
-                break
-            if st['cur'] != 0:
-                page.wait_for_timeout(20)
-                continue
-            if st['phase'] == 'place':
-                if not shot_place:
-                    page.screenshot(path=os.path.join(OUT, '2-place.png'), full_page=True)
-                    shot_place = True
-                page.locator('[data-cell]').first.click()
-            elif page.locator('#action [data-k]').count():
-                btns = page.locator('#action [data-k]')
-                btns.nth(min(1, btns.count() - 1)).click()   # だいたい1マスずつ進む(0マスがあればおかわり)
-            else:
-                page.wait_for_timeout(20)
-        check_end(page, 4)
-        page.screenshot(path=os.path.join(OUT, '3-result.png'), full_page=True)
+        print('▶ 人間1人 + CPU3人を画面操作で遊ぶ(PC)', flush=True)
+        play_human(page, url, 'pc')
+        check(not errors, 'ページエラーなし ' + '; '.join(errors[:3]))
+
+        print('▶ 同じくスマホ幅(390×844、タッチ)で遊ぶ', flush=True)
+        ctx = br.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True, device_scale_factor=2)
+        phone = ctx.new_page()
+        phone.on('pageerror', lambda e: errors.append(str(e)))
+        phone.on('console', lambda m: m.type == 'error' and errors.append(m.text))
+        play_human(phone, url, 'sp', phone=True)
         check(not errors, 'ページエラーなし ' + '; '.join(errors[:3]))
         br.close()
     if errors:
