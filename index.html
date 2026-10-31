@@ -428,55 +428,60 @@ const COLORS = {
 };
 const COLOR_KEYS = Object.keys(COLORS);
 
+// カードの中身は card.xlsx(デザイナー提供)の内容
 // supply: 'heap'=山盛り(人数) / 'normal'=通常(人数−1、最低2) / 数字=限定
-// bonus: 置いたマスの条件を満たすと追加の満足度
-//   { adj: 色 }    … 上下左右の隣にその色がある
-//   { row: 'top'|'bottom' } … 上段 / 下段に置く
-//   { corner: true } … 四隅に置く
+// bonus: 条件を満たすと追加の満足度
+//   { adj: [色…] }   … 上下左右の隣にどれかの色がある
+//   { cells: [マス…] } … 指定のマスに置く(0〜2=上段左〜右、3〜5=下段左〜右)
+//   { row: 'top' }    … 上段に置く
+//   { nth: n }        … トレイの n 個目として置く
+//   { again: true }   … 0マス移動(おかわり)で取った2個目
+// betsubara: 満腹度がこの値以上なら満腹度0で取れる
+// note: 効果なしのカードに書かれた一言
 const DISHES = [
-  { id: 'b1', color: 'brown',  name: 'スクランブルエッグ', emoji: '🍳', full: 1,  sat: 2, supply: 'normal', star: true, bonus: { adj: 'yellow', pts: 1 } },
-  { id: 'b2', color: 'brown',  name: 'カリカリベーコン',   emoji: '🥓', full: 2,  sat: 3, supply: 'heap',   bonus: { row: 'top', pts: 1 } },
-  { id: 'b3', color: 'brown',  name: 'ローストビーフ',     emoji: '🥩', full: 3,  sat: 5, supply: 1,        bonus: { corner: true, pts: 1 } },
-  { id: 'b4', color: 'brown',  name: 'ブラックコーヒー',   emoji: '☕', full: -1, sat: 1, supply: 'heap',   bonus: null },
-  { id: 'r1', color: 'red',    name: '小籠包',             emoji: '🥟', full: 2,  sat: 3, supply: 'normal', star: true, bonus: { adj: 'red', pts: 1 } },
-  { id: 'r2', color: 'red',    name: '焼売',               emoji: '🥢', full: 1,  sat: 2, supply: 'heap',   bonus: { adj: 'green', pts: 1 } },
-  { id: 'r3', color: 'red',    name: '麻婆豆腐',           emoji: '🌶️', full: 2,  sat: 4, supply: 2,        bonus: { adj: 'yellow', pts: 2 } },
-  { id: 'r4', color: 'red',    name: '春巻き',             emoji: '🌯', full: 2,  sat: 3, supply: 'normal', bonus: { row: 'bottom', pts: 1 } },
-  { id: 'u1', color: 'blue',   name: '焼き鮭',             emoji: '🐟', full: 1,  sat: 3, supply: 'normal', star: true, bonus: { adj: 'yellow', pts: 1 } },
-  { id: 'u2', color: 'blue',   name: '海鮮ちらし',         emoji: '🍣', full: 2,  sat: 5, supply: 1,        bonus: null },
-  { id: 'u3', color: 'blue',   name: '緑茶',               emoji: '🍵', full: -1, sat: 1, supply: 'heap',   bonus: null },
-  { id: 'u4', color: 'blue',   name: '茶碗蒸し',           emoji: '🥚', full: 1,  sat: 2, supply: 'heap',   bonus: { adj: 'green', pts: 1 } },
-  { id: 'y1', color: 'yellow', name: 'クロワッサン',       emoji: '🥐', full: 2,  sat: 2, supply: 'normal', star: true, bonus: { adj: 'brown', pts: 1 } },
-  { id: 'y2', color: 'yellow', name: '白ごはん',           emoji: '🍚', full: 2,  sat: 2, supply: 'heap',   bonus: { adj: 'blue', pts: 2 } },
-  { id: 'y3', color: 'yellow', name: 'フレンチトースト',   emoji: '🍞', full: 3,  sat: 4, supply: 'normal', bonus: { adj: 'pink', pts: 2 } },
-  { id: 'y4', color: 'yellow', name: 'おにぎり',           emoji: '🍙', full: 2,  sat: 3, supply: 'normal', bonus: { row: 'bottom', pts: 1 } },
-  { id: 'g1', color: 'green',  name: 'グリーンサラダ',     emoji: '🥗', full: 0,  sat: 1, supply: 'heap',   star: true, bonus: { adj: 'brown', pts: 1 } },
-  { id: 'g2', color: 'green',  name: 'ラタトゥイユ',       emoji: '🍅', full: 1,  sat: 2, supply: 'normal', bonus: { adj: 'red', pts: 1 } },
-  { id: 'g3', color: 'green',  name: '温野菜',             emoji: '🥦', full: 1,  sat: 2, supply: 'heap',   bonus: { corner: true, pts: 1 } },
-  { id: 'g4', color: 'green',  name: 'アボカドボウル',     emoji: '🥑', full: 1,  sat: 3, supply: 2,        bonus: { row: 'top', pts: 1 } },
-  { id: 'p1', color: 'pink',   name: 'フルーツヨーグルト', emoji: '🍓', full: 1,  sat: 2, supply: 'normal', star: true, bonus: { adj: 'green', pts: 1 } },
-  { id: 'p2', color: 'pink',   name: 'パンケーキ',         emoji: '🥞', full: 3,  sat: 4, supply: 'normal', bonus: { row: 'top', pts: 2 } },
-  { id: 'p3', color: 'pink',   name: '苺タルト',           emoji: '🍰', full: 2,  sat: 5, supply: 1,        bonus: null },
-  { id: 'p4', color: 'pink',   name: 'カットフルーツ',     emoji: '🍉', full: 0,  sat: 1, supply: 'heap',   bonus: { adj: 'pink', pts: 1 } },
+  { id: 'b1', color: 'brown',  name: 'パリパリウインナー',       emoji: '🌭', full: 1,  sat: 2, supply: 'normal', star: true, bonus: null, note: '朝の定番メニュー' },
+  { id: 'b2', color: 'brown',  name: '厚切りベーコン＆エッグ',   emoji: '🥓', full: 2,  sat: 3, supply: 'normal', bonus: { adj: ['yellow'], pts: 2 } },
+  { id: 'b3', color: 'brown',  name: 'シェフの実演オムレツ',     emoji: '🍳', full: 2,  sat: 5, supply: 2,        bonus: null, note: '出来立ての目玉メニュー！' },
+  { id: 'b4', color: 'brown',  name: '国産牛ローストビーフ',     emoji: '🥩', full: 2,  sat: 6, supply: 1,        bonus: null, note: '1人しか取れない超目玉！' },
+  { id: 'r1', color: 'red',    name: '熱々セイロ蒸し焼売',       emoji: '🥟', full: 1,  sat: 2, supply: 'normal', star: true, bonus: { adj: ['red'], pts: 2 } },
+  { id: 'r2', color: 'red',    name: 'パリッと羽根つき餃子',     emoji: '🥢', full: 2,  sat: 4, supply: 'normal', bonus: null, note: '中量・中得点の安定枠' },
+  { id: 'r3', color: 'red',    name: '本格スパイシー麻婆豆腐',   emoji: '🌶️', full: 2,  sat: 4, supply: 'normal', bonus: { adj: ['yellow'], pts: 2 } },
+  { id: 'r4', color: 'red',    name: '大海老のチリソース',       emoji: '🦐', full: 2,  sat: 5, supply: 2,        bonus: null, note: '中華コーナーの豪華メニュー！' },
+  { id: 'u1', color: 'blue',   name: 'あさりの特製味噌汁',       emoji: '🍲', full: 1,  sat: 2, supply: 'heap',   star: true, bonus: { adj: ['yellow'], pts: 1 } },
+  { id: 'u2', color: 'blue',   name: '脂の乗った焼き鮭＆明太子', emoji: '🐟', full: 1,  sat: 3, supply: 'normal', bonus: { again: true, pts: 1 } },
+  { id: 'u3', color: 'blue',   name: 'ホテル伝統の朝カレールー', emoji: '🍛', full: 2,  sat: 3, supply: 2,        bonus: { adj: ['yellow', 'brown'], pts: 3 } },
+  { id: 'u4', color: 'blue',   name: 'ご当地・海鮮お刺身盛り',   emoji: '🍣', full: 3,  sat: 7, supply: 2,        bonus: null, note: '超高得点だが一気に胃袋を圧迫する！' },
+  { id: 'y1', color: 'yellow', name: 'ホカホカ白米',             emoji: '🍚', full: 2,  sat: 2, supply: 'heap',   star: true, bonus: { cells: [3, 5], pts: 3 } },
+  { id: 'y2', color: 'yellow', name: 'バター香る焼き立て食パン', emoji: '🍞', full: 1,  sat: 2, supply: 'normal', bonus: { adj: ['brown', 'pink'], pts: 2 } },
+  { id: 'y3', color: 'yellow', name: 'カリッとハッシュポテト',   emoji: '🥔', full: 1,  sat: 2, supply: 'normal', bonus: { adj: ['brown'], pts: 2 } },
+  { id: 'y4', color: 'yellow', name: 'つるっと釜玉うどん',       emoji: '🍜', full: 2,  sat: 4, supply: 'normal', bonus: { adj: ['blue', 'red'], pts: 2 } },
+  { id: 'g1', color: 'green',  name: '彩りグリーンサラダ',       emoji: '🥗', full: 1,  sat: 1, supply: 'heap',   star: true, bonus: { nth: 1, pts: 3 } },
+  { id: 'g2', color: 'green',  name: '冷製コーンスープ',         emoji: '🌽', full: 1,  sat: 2, supply: 'normal', bonus: { row: 'top', pts: 1 } },
+  { id: 'g3', color: 'green',  name: '生搾りグリーンスムージー', emoji: '🥤', full: 0,  sat: 2, supply: 2,        bonus: null, note: '満腹度が増えない！6色コンプリート狙いに' },
+  { id: 'g4', color: 'green',  name: '高原野菜のせいろ蒸し',     emoji: '🥦', full: 2,  sat: 4, supply: 'normal', bonus: { adj: ['brown', 'blue'], pts: 2 } },
+  { id: 'p1', color: 'pink',   name: '季節のカットフルーツ',     emoji: '🍉', full: 1,  sat: 3, supply: 'normal', star: true, bonus: null, note: '朝からさっぱり定番フルーツ' },
+  { id: 'p2', color: 'pink',   name: 'ふわふわパンケーキ',       emoji: '🥞', full: 3,  sat: 6, supply: 'normal', bonus: null, note: 'お腹にずっしり溜まるが高得点' },
+  { id: 'p3', color: 'pink',   name: '別腹ソフトクリーム',       emoji: '🍦', full: 2,  sat: 4, supply: 'normal', bonus: null, betsubara: 8 },
+  { id: 'p4', color: 'pink',   name: '食後のホットコーヒー',     emoji: '☕', full: -2, sat: 1, supply: 'heap',   bonus: { nth: 6, pts: 2 } },
 ];
 
 const EVENTS = [
-  { id: 'chef',    name: 'シェフのおすすめ',         emoji: '👨‍🍳', text: '1着でゴールした人は満足度＋3' },
-  { id: 'coffee',  name: 'モーニングコーヒーサービス', emoji: '☕', text: '全員の満腹度−1' },
-  { id: 'wagon',   name: 'ワゴンサービス',           emoji: '🛒', text: '場の料理カードすべてにトークンを1個ずつ追加' },
-  { id: 'cleanup', name: 'お片付けタイム',           emoji: '🧹', text: '場の料理カードからトークンを1個ずつ下げる（最後の1個は残る）' },
+  { id: 'bus',     name: 'バスツアー団体客が到着！',       emoji: '🚌', text: 'まだゴールしていない人がいれば、場の大皿すべてからトークンを1個ずつ下げる（残り1個の皿は減らさない）' },
+  { id: 'chef',    name: 'シェフの気まぐれタイムサービス！', emoji: '👨‍🍳', text: 'この周回でまだゴールしていない全員が満足度＋2' },
+  { id: 'oolong',  name: '特製デトックス黒烏龍茶が登場！',  emoji: '🍵', text: 'いま満腹度がもっとも高い人（同率全員）は満腹度−2' },
+  { id: 'serve',   name: '焼きたての誘惑！テーブル配膳サービス', emoji: '🛎️', text: 'いま満足度がもっとも低い人（同率全員）は満足度＋3。さらに満腹度がもっとも低い人（同率全員）は満腹度＋1' },
 ];
 
-// aff: トレイの色ごとの個数 → 相性条件を満たすか
+// aff(色ごとの個数, 終了時の満腹度) → 相性ボーナスの条件を満たすか
 const LUNCHES = [
-  { id: 'sushi',   name: '回らないお寿司', emoji: '🍣', cap: 6, base: 10, exact: 3, affPts: 3, affText: '青が1個以下',          aff: c => c.blue <= 1 },
-  { id: 'steak',   name: '鉄板ステーキ',   emoji: '🥩', cap: 5, base: 12, exact: 3, affPts: 3, affText: '緑が2個以上',          aff: c => c.green >= 2 },
-  { id: 'ramen',   name: '濃厚ラーメン',   emoji: '🍜', cap: 8, base: 8,  exact: 2, affPts: 3, affText: '赤が2個以上',          aff: c => c.red >= 2 },
-  { id: 'curry',   name: '本格カレー',     emoji: '🍛', cap: 7, base: 9,  exact: 2, affPts: 4, affText: '黄が0個',              aff: c => c.yellow === 0 },
-  { id: 'tempura', name: '天ぷら御膳',     emoji: '🍤', cap: 7, base: 9,  exact: 2, affPts: 3, affText: '青と緑が各1個以上',    aff: c => c.blue >= 1 && c.green >= 1 },
-  { id: 'chinese', name: '中華フルコース', emoji: '🥡', cap: 6, base: 11, exact: 3, affPts: 3, affText: '赤が0個',              aff: c => c.red === 0 },
-  { id: 'soba',    name: 'ざる蕎麦',       emoji: '🥢', cap: 9, base: 6,  exact: 2, affPts: 3, affText: '桃が2個以上',          aff: c => c.pink >= 2 },
-  { id: 'cafe',    name: 'パンケーキカフェ', emoji: '🥞', cap: 8, base: 7, exact: 2, affPts: 3, affText: '桃が0個',             aff: c => c.pink === 0 },
+  { id: 'steak',  name: 'ブランド牛の鉄板ステーキ',       emoji: '🥩', cap: 6,  base: 11, exact: 3, affPts: 4, affText: 'トレイの茶が1個以下',  aff: c => c.brown <= 1 },
+  { id: 'dimsum', name: '本場の飲茶＆北京ダックコース',   emoji: '🥡', cap: 7,  base: 9,  exact: 3, affPts: 3, affText: 'トレイの赤が1個以下',  aff: c => c.red <= 1 },
+  { id: 'kaisen', name: '市場の豪快・海鮮こぼれ丼',       emoji: '🦀', cap: 7,  base: 9,  exact: 3, affPts: 4, affText: 'トレイの青が0個',      aff: c => c.blue === 0 },
+  { id: 'ramen',  name: 'ご当地・濃厚豚骨ラーメン',       emoji: '🍜', cap: 7,  base: 9,  exact: 3, affPts: 3, affText: 'トレイの黄が1個以下',  aff: c => c.yellow <= 1 },
+  { id: 'pizza',  name: '高原テラスの石窯マルゲリータ',   emoji: '🍕', cap: 8,  base: 7,  exact: 3, affPts: 3, affText: 'トレイの緑が1個以下',  aff: c => c.green <= 1 },
+  { id: 'tea',    name: 'ホテルの優雅なアフタヌーンティー', emoji: '🫖', cap: 8, base: 7,  exact: 3, affPts: 3, affText: 'トレイの桃が1個以下',  aff: c => c.pink <= 1 },
+  { id: 'stroll', name: '城下町の食べ歩きコロッケ＆団子', emoji: '🍡', cap: 9,  base: 5,  exact: 3, affPts: 4, affText: 'トレイに6色すべて',    aff: c => COLOR_KEYS.every(k => c[k] >= 1) },
+  { id: 'skip',   name: '今日は昼抜き！朝ビュッフェ全振り！', emoji: '🍽️', cap: 12, base: 0, exact: 0, affPts: 9, affText: '終了時の満腹度が11か12', aff: (c, full) => full === 11 || full === 12 },
 ];
 
 const PIECE_COLORS = ['#6f7c88', '#24467a', '#b8642e', '#7a4aa0'];   // 銀・紺・銅・紫のトング
@@ -515,20 +520,33 @@ function supplyLabel(card) {
   if (card.supply === 'normal') return '通常';
   return `限定${card.supply}個`;
 }
-function bonusText(b) {
-  if (!b) return '配置ボーナスなし';
-  if (b.adj) return `隣に${COLORS[b.adj].name}があれば＋${b.pts}`;
-  if (b.row) return `${b.row === 'top' ? '上段' : '下段'}に置くと＋${b.pts}`;
-  if (b.corner) return `四隅に置くと＋${b.pts}`;
+const CELL_NAMES = ['左上', '上段中央', '右上', '左下', '下段中央', '右下'];
+function bonusText(card) {
+  const b = card.bonus;
+  if (card.betsubara) return `【別腹】満腹度${card.betsubara}以上なら満腹度0で取れる`;
+  if (!b) return card.note || '効果なし';
+  if (b.adj) return `${b.adj.map(k => COLORS[k].name).join('か')}の隣に置くと＋${b.pts}`;
+  if (b.cells) return `${b.cells.map(i => CELL_NAMES[i]).join('か')}に置くと＋${b.pts}`;
+  if (b.row) return `上段に置くと＋${b.pts}`;
+  if (b.nth === 1) return `【ベジファースト】トレイの1個目に置くと＋${b.pts}`;
+  if (b.nth) return `トレイの${b.nth}個目（最後）に置くと＋${b.pts}`;
+  if (b.again) return `おかわり（0マス）で取った2個目は＋${b.pts}`;
   return '';
 }
-function placementBonus(tray, cell, card) {
+// again: 0マス移動(おかわり)で取るとき
+function placementBonus(tray, cell, card, again = false) {
   const b = card.bonus;
   if (!b) return 0;
-  if (b.adj) return ADJ[cell].some(i => tray[i] && tray[i].color === b.adj) ? b.pts : 0;
-  if (b.row) return (b.row === 'top' ? cell < 3 : cell >= 3) ? b.pts : 0;
-  if (b.corner) return CORNERS.includes(cell) ? b.pts : 0;
+  if (b.adj) return ADJ[cell].some(i => tray[i] && b.adj.includes(tray[i].color)) ? b.pts : 0;
+  if (b.cells) return b.cells.includes(cell) ? b.pts : 0;
+  if (b.row) return cell < 3 ? b.pts : 0;
+  if (b.nth) return tray.filter(Boolean).length === b.nth - 1 ? b.pts : 0;
+  if (b.again) return again ? b.pts : 0;
   return 0;
+}
+// 取ったときに実際に増える満腹度(別腹ソフトクリームの効果を含む)
+function fullGain(p, card) {
+  return card.betsubara && p.full >= card.betsubara ? 0 : card.full;
 }
 function colorCounts(tray) {
   const c = Object.fromEntries(COLOR_KEYS.map(k => [k, 0]));
@@ -631,8 +649,8 @@ function lunchCardHtml(l) {
     <dl>
       <dt>満腹度上限</dt><dd><b>${l.cap}</b> 以下で成功</dd>
       <dt>基礎満足度</dt><dd>＋${l.base}</dd>
-      <dt>ピタリ賞</dt><dd>満腹度がちょうど ${l.cap} なら＋${l.exact}</dd>
-      <dt>相性</dt><dd>${esc(l.affText)}なら＋${l.affPts}</dd>
+      ${l.exact ? `<dt>ピタリ賞</dt><dd>満腹度がちょうど ${l.cap} なら＋${l.exact}</dd>` : ''}
+      <dt>${l.exact ? '相性' : 'ボーナス'}</dt><dd>${esc(l.affText)}なら＋${l.affPts}</dd>
     </dl>`;
 }
 
@@ -706,7 +724,7 @@ function doMove(pi, k) {
     G.phase = 'place';
     G.pending = { pi, s: info.to - 1, again: k === 0 };
     render();
-    if (p.cpu) setTimeout(() => place(pi, cpuPickCell(p, sq.card)), CPU_DELAY / 2);
+    if (p.cpu) setTimeout(() => place(pi, cpuPickCell(p, sq.card, k === 0)), CPU_DELAY / 2);
     return;
   }
   advance();
@@ -717,14 +735,15 @@ function place(pi, cell) {
   const p = G.players[pi];
   if (p.tray[cell]) return;
   const s = G.pending.s, sq = G.squares[s], c = sq.card;
-  const bonus = placementBonus(p.tray, cell, c);
+  const bonus = placementBonus(p.tray, cell, c, G.pending.again);
   const before = p.full;
+  const gain = fullGain(p, c);
   p.tray[cell] = { color: c.color, emoji: c.emoji, name: c.name };
-  p.full = clamp(p.full + c.full, 0, MAX_FULL);
+  p.full = clamp(p.full + gain, 0, MAX_FULL);
   p.sat += c.sat + bonus;
   sq.tokens--;
   p.stay = (p.stay && p.stay.uid === sq.uid) ? { uid: sq.uid, count: 2 } : { uid: sq.uid, count: 1 };
-  log(`${p.name} が ${G.pending.again ? 'おかわりで ' : ''}${c.emoji}${c.name} を取った（満腹度 ${before}→${p.full}、満足度 ＋${c.sat}${bonus ? ` ＋配置ボーナス${bonus}` : ''}）。`);
+  log(`${p.name} が ${G.pending.again ? 'おかわりで ' : ''}${c.emoji}${c.name} を取った（${gain !== c.full ? '別腹！ ' : ''}満腹度 ${before}→${p.full}、満足度 ＋${c.sat}${bonus ? ` ＋ボーナス${bonus}` : ''}）。`);
   if (p.full >= MAX_FULL && before < MAX_FULL) log(`${p.name} は食べすぎバースト状態！`, 'ev');
   if (sq.tokens === 0) {
     G.discard.push(c);
@@ -745,8 +764,8 @@ function arriveGoal(p) {
   if (rank === 1) {
     const ev = G.events[G.lap - 1];
     G.revealed.push(ev);
-    applyEvent(ev, p);
     log(`イベント「${ev.name}」発動：${ev.text}`, 'ev');
+    applyEvent(ev);
     toast(`${ev.emoji} <b>${ev.name}</b><br>${ev.text}`);
   }
   const relief = rank === 1 ? 2 : rank === 2 ? 1 : 0;
@@ -759,11 +778,32 @@ function arriveGoal(p) {
   else advance();
 }
 
-function applyEvent(ev, p) {
-  if (ev.id === 'chef') p.sat += 3;
-  if (ev.id === 'coffee') G.players.forEach(q => { q.full = clamp(q.full - 1, 0, MAX_FULL); });
-  if (ev.id === 'wagon') G.squares.forEach(sq => { if (sq.card) sq.tokens++; });
-  if (ev.id === 'cleanup') G.squares.forEach(sq => { if (sq.card && sq.tokens > 1) sq.tokens--; });
+// 1着の人がゴールした直後(G.finish に入った後)に呼ばれる
+function applyEvent(ev) {
+  const ps = G.players;
+  const notYet = ps.filter(q => !G.finish.includes(q.i));
+  const names = qs => qs.map(q => q.name).join('・');
+  if (ev.id === 'bus' && notYet.length) {
+    G.squares.forEach(sq => { if (sq.card && sq.tokens > 1) sq.tokens--; });
+  }
+  if (ev.id === 'chef') {
+    notYet.forEach(q => { q.sat += 2; });
+    if (notYet.length) log(`${names(notYet)} が満足度＋2。`);
+  }
+  if (ev.id === 'oolong') {
+    const top = Math.max(...ps.map(q => q.full));
+    const hit = ps.filter(q => q.full === top);
+    hit.forEach(q => { q.full = clamp(q.full - 2, 0, MAX_FULL); });
+    log(`${names(hit)} の満腹度−2。`);
+  }
+  if (ev.id === 'serve') {
+    const lowSat = Math.min(...ps.map(q => q.sat));
+    const lowFull = Math.min(...ps.map(q => q.full));
+    const a = ps.filter(q => q.sat === lowSat), b = ps.filter(q => q.full === lowFull);
+    a.forEach(q => { q.sat += 3; });
+    b.forEach(q => { q.full = clamp(q.full + 1, 0, MAX_FULL); });
+    log(`${names(a)} が満足度＋3、${names(b)} が満腹度＋1。`);
+  }
 }
 
 function endLap() {
@@ -795,7 +835,7 @@ function finalScore(p) {
   const ok = p.full <= L.cap;
   const lunch = ok ? L.base : 0;
   const exact = ok && p.full === L.cap ? L.exact : 0;
-  const aff = ok && L.aff(counts) ? L.affPts : 0;
+  const aff = ok && L.aff(counts, p.full) ? L.affPts : 0;
   const burst = p.full >= MAX_FULL ? -5 : 0;
   return { base: p.sat, rainbow, rows, ok, lunch, exact, aff, burst,
            total: p.sat + rainbow + rows + lunch + exact + aff + burst };
@@ -855,6 +895,11 @@ function cpuPickLunch(p) {
 // 満腹度が増えることのコスト(ランチ上限を越えるなら大きく減点)
 function fullCost(p, delta) {
   const after = clamp(p.full + delta, 0, MAX_FULL);
+  if (p.lunch.id === 'skip') {   // 昼抜き: 11〜12 を目指してたくさん食べる。13 だけは避ける
+    let cost = -(after - p.full) * 0.5;
+    if (after >= MAX_FULL && p.full < MAX_FULL) cost += 14;
+    return cost;
+  }
   const lapsLeft = G.lap === 1 ? 2 : 1;
   const slack = p.lunch.cap + lapsLeft - 0.3;   // ゴールでの消化を少し見込む
   let cost = (after - p.full) * 0.6;
@@ -865,8 +910,8 @@ function fullCost(p, delta) {
   return cost;
 }
 
-function cellValue(p, cell, card) {
-  let v = placementBonus(p.tray, cell, card);
+function cellValue(p, cell, card, again) {
+  let v = placementBonus(p.tray, cell, card, again);
   const row = ROWS.find(r => r.includes(cell));
   const others = row.filter(i => i !== cell).map(i => p.tray[i]);
   const filled = others.filter(Boolean);
@@ -875,16 +920,16 @@ function cellValue(p, cell, card) {
   return v + Math.random() * 0.1;
 }
 
-function takeValue(p, card) {
+function takeValue(p, card, again) {
   const cells = emptyCells(p.tray);
-  const bestCell = Math.max(...cells.map(c => cellValue(p, c, card)));
+  const bestCell = Math.max(...cells.map(c => cellValue(p, c, card, again)));
   const counts = colorCounts(p.tray);
-  let v = card.sat + bestCell - fullCost(p, card.full);
+  let v = card.sat + bestCell - fullCost(p, fullGain(p, card));
   const distinct = COLOR_KEYS.filter(k => counts[k]).length;
   const rainbowAlive = distinct === 6 - cells.length;   // まだ全部ちがう色
   if (rainbowAlive) v += counts[card.color] ? -1.2 : 1.2;
   const after = { ...counts, [card.color]: counts[card.color] + 1 };
-  v += (p.lunch.aff(after) - p.lunch.aff(counts)) * p.lunch.affPts * 0.8;
+  v += (p.lunch.aff(after, p.full) - p.lunch.aff(counts, p.full)) * p.lunch.affPts * 0.8;
   if (G.lap === 1 && cells.length <= 3) v -= 0.6;   // 2周目のために枠を少し残したい
   return v;
 }
@@ -898,7 +943,7 @@ function moveValue(p, m) {
     v = relief * (p.full > p.lunch.cap ? 3 : 0.8) - 0.5;
     if (!emptyCells(p.tray).length) v += 3;
   } else if (info.kind === 'take') {
-    v = takeValue(p, info.sq.card);
+    v = takeValue(p, info.sq.card, m.k === 0);
   } else {
     v = 0;
   }
@@ -913,9 +958,9 @@ function cpuTurn(p) {
   doMove(p.i, best.k);
 }
 
-function cpuPickCell(p, card) {
+function cpuPickCell(p, card, again) {
   const cells = emptyCells(p.tray);
-  return cells.reduce((a, b) => cellValue(p, b, card) > cellValue(p, a, card) ? b : a);
+  return cells.reduce((a, b) => cellValue(p, b, card, again) > cellValue(p, a, card, again) ? b : a);
 }
 
 // ================================================================
@@ -997,7 +1042,7 @@ function dishHtml(sq) {
     </div>
     <div class="plate">${c.emoji}<span class="left">残${sq.tokens}</span></div>
     <div class="stats"><span class="pill full ${c.full < 0 ? 'minus' : ''}">満腹${signed(c.full)}</span><span class="pill sat">満足＋${c.sat}</span></div>
-    <div class="bonus">${bonusText(c.bonus)}</div>
+    <div class="bonus">${bonusText(c)}</div>
     <div class="tokens">${Array.from({ length: sq.tokens }, () => `<span class="tok" style="background:${col.hex}"></span>`).join('')}</div>
     <div class="supply">${supplyLabel(c)}</div>
   </div>`;
@@ -1041,7 +1086,7 @@ function renderAction() {
   const head = `<div class="who">${tongSvg(p.color, 18)} ${esc(p.name)} の手番${p.cpu ? '<span class="sub">（CPU）</span>' : ''}</div>`;
   if (G.phase === 'place') {
     const c = G.squares[G.pending.s].card;
-    setAction(`${head}<div class="hint">${c.emoji}${esc(c.name)} をトレイのどのお皿に盛る？（${bonusText(c.bonus)}）${p.cpu ? '' : '<span class="desk-only">— 光っているお皿をクリック</span>'}</div>
+    setAction(`${head}<div class="hint">${c.emoji}${esc(c.name)} をトレイのどのお皿に盛る？（${bonusText(c)}）${p.cpu ? '' : '<span class="desk-only">— 光っているお皿をクリック</span>'}</div>
       ${p.cpu ? '' : `<div class="tray phone-only">${trayCellsHtml(p, c)}</div>`}`);
     return;
   }
@@ -1077,7 +1122,7 @@ function trayCellsHtml(p, card) {
   return p.tray.map((t, i) => {
     if (t) return `<div class="cell filled" style="border-color:${COLORS[t.color].hex}" title="${esc(t.name)}">${t.emoji}</div>`;
     if (card) {
-      const b = placementBonus(p.tray, i, card);
+      const b = placementBonus(p.tray, i, card, G.pending && G.pending.again);
       return `<div class="cell pick" data-cell="${i}">${card.emoji}${b ? `<span class="gain">＋${b}</span>` : ''}</div>`;
     }
     return `<div class="cell vacant"></div>`;
@@ -1095,7 +1140,7 @@ function renderPlayers() {
     const lunchHtml = !p.lunch ? '<div class="lunch secret"><div class="rsv">RESERVATION 12:00</div>ご予約を選択中…</div>'
       : see ? `<div class="lunch"><div class="rsv">RESERVATION 12:00</div>
           <div class="nm2">${p.lunch.emoji} ${esc(p.lunch.name)}</div>
-          満腹度上限 <b>${p.lunch.cap}</b>・基礎＋${p.lunch.base}・ピタリ＋${p.lunch.exact}<br>相性：${esc(p.lunch.affText)}なら＋${p.lunch.affPts}</div>`
+          満腹度上限 <b>${p.lunch.cap}</b>・基礎＋${p.lunch.base}${p.lunch.exact ? `・ピタリ＋${p.lunch.exact}` : ''}<br>${p.lunch.exact ? '相性' : 'ボーナス'}：${esc(p.lunch.affText)}なら＋${p.lunch.affPts}</div>`
       : `<div class="lunch secret"><div class="rsv">RESERVATION 12:00</div>ご予約内容は伏せてあります${!p.cpu && G.current === p.i && G.phase !== 'end' ? ' <button id="btn-peek">こっそり見る</button>' : ''}</div>`;
     const rk = p.ranks.map((r, k) => `${k + 1}周目${r}着`).join('・');
     return `<div class="pl ${G.current === p.i && G.phase !== 'end' ? 'active' : ''}">
