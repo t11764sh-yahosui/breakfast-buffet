@@ -1,0 +1,5 @@
+.claude/
+.DS_Store
+.venv/
+test-results/
+__pycache__/

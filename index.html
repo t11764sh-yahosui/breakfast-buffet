@@ -1,0 +1,875 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>朝食ビュッフェ（仮）</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍳</text></svg>">
+<style>
+  :root {
+    --bg: #fbf5ea;
+    --panel: #fffdf8;
+    --ink: #3b2f25;
+    --muted: #8a7a6a;
+    --line: #e6d9c4;
+    --accent: #d9822b;
+    --accent-ink: #fff;
+    --good: #3f8f4f;
+    --bad: #c2463b;
+    --c-brown: #8d5a3b;
+    --c-red: #d2403a;
+    --c-blue: #2f6db5;
+    --c-yellow: #e8b923;
+    --c-green: #4c9a45;
+    --c-pink: #e47aa8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Hiragino Maru Gothic ProN", "Hiragino Sans", "Yu Gothic", sans-serif;
+    font-size: 15px; line-height: 1.5;
+  }
+  button {
+    font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--panel);
+    color: var(--ink); border-radius: 10px; padding: 6px 14px;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: bold; }
+  button:disabled { opacity: .35; cursor: default; }
+  .hidden { display: none !important; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 12px 16px 40px; }
+  h1 { font-size: 22px; margin: 4px 0 2px; }
+  .sub { color: var(--muted); font-size: 13px; }
+
+  /* ---------- 準備画面 ---------- */
+  #setup .box { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; max-width: 560px; margin: 24px auto; }
+  #setup .seat { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+  #setup .seat input { flex: 1; min-width: 0; font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; }
+  #setup .seat select, #setup select { font: inherit; padding: 6px; border-radius: 8px; border: 1px solid var(--line); background: #fff; }
+  .rules { font-size: 13px; color: var(--muted); margin-top: 14px; }
+  .rules li { margin: 2px 0; }
+
+  /* ---------- ヘッダー ---------- */
+  .topbar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 13px; }
+
+  /* ---------- ビュッフェ台 ---------- */
+  .board-scroll { overflow-x: auto; margin: 10px -16px 0; padding: 0 16px 6px; }
+  #board { display: grid; grid-template-columns: repeat(8, minmax(118px, 1fr)); gap: 8px; min-width: 990px; }
+  .slot { display: flex; flex-direction: column; gap: 6px; border-radius: 14px; padding: 4px; border: 2px solid transparent; }
+  .slot.target { border-color: var(--accent); background: #fff1df; cursor: pointer; }
+  .slot.target:hover { background: #ffe4c2; }
+  .card {
+    position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    min-height: 196px; padding: 0 8px 8px; overflow: hidden; display: flex; flex-direction: column;
+  }
+  .card .band { margin: 0 -8px 6px; padding: 3px 8px; color: #fff; font-size: 11px; display: flex; justify-content: space-between; white-space: nowrap; }
+  .card .emoji { font-size: 30px; text-align: center; line-height: 1.2; }
+  .card .name { font-weight: bold; text-align: center; font-size: 14px; }
+  .card .stats { display: flex; justify-content: center; gap: 8px; font-size: 12px; margin: 2px 0; white-space: nowrap; }
+  .card .stats b { font-size: 14px; }
+  .card .bonus { font-size: 11px; color: var(--muted); text-align: center; min-height: 2.8em; }
+  .card .tokens { margin-top: auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; min-height: 18px; }
+  .card .supply { font-size: 11px; text-align: center; color: var(--muted); }
+  .card.special { justify-content: center; align-items: center; text-align: center; background: repeating-linear-gradient(45deg, #fff8ec, #fff8ec 8px, #fdf0db 8px, #fdf0db 16px); }
+  .card.empty { justify-content: center; align-items: center; color: var(--muted); }
+  .tok { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(0,0,0,.18); display: inline-block; }
+  .stack { display: flex; flex-direction: column; gap: 3px; min-height: 30px; align-items: stretch; }
+  .piece { border-radius: 999px; color: #fff; font-size: 12px; padding: 1px 8px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .piece.top { box-shadow: 0 0 0 2px var(--ink) inset; font-weight: bold; }
+  .piece.now { outline: 3px solid var(--accent); outline-offset: 1px; }
+
+  /* ---------- 手番パネル ---------- */
+  #action { background: var(--panel); border: 2px solid var(--accent); border-radius: 14px; padding: 10px 14px; margin: 10px 0; }
+  #action .who { font-weight: bold; font-size: 16px; }
+  #action .moves { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  #action .moves button { min-width: 92px; }
+  #action .hint { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  /* ---------- プレイヤー ---------- */
+  #players { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+  .pl { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+  .pl.active { border: 2px solid var(--accent); }
+  .pl .head { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .pl .nm { font-weight: bold; display: flex; align-items: center; gap: 6px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .sat { font-size: 20px; font-weight: bold; }
+  .sat small { font-size: 12px; color: var(--muted); font-weight: normal; }
+  .tray { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin: 8px 0; background: #f3e8d6; padding: 6px; border-radius: 10px; }
+  .cell { aspect-ratio: 1.35; border-radius: 8px; background: #fff; border: 1px dashed #d8c7ab; display: flex; align-items: center; justify-content: center; font-size: 22px; position: relative; }
+  .cell.filled { border: 3px solid; }
+  .cell.pick { cursor: pointer; border: 2px solid var(--accent); background: #fff1df; }
+  .cell.pick:hover { background: #ffdcae; }
+  .cell .gain { position: absolute; bottom: 1px; right: 4px; font-size: 11px; color: var(--accent); font-weight: bold; }
+  .meter { position: relative; height: 16px; border-radius: 8px; background: #efe4d2; overflow: visible; margin: 4px 0 14px; }
+  .meter .fill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, #f2c27b, #e0782f); transition: width .3s; }
+  .meter.burst .fill { background: var(--bad); }
+  .meter .cap { position: absolute; top: -4px; bottom: -4px; width: 3px; background: var(--good); border-radius: 2px; }
+  .meter .ticks { position: absolute; left: 0; right: 0; top: 17px; display: flex; justify-content: space-between; font-size: 9px; color: var(--muted); }
+  .lunch { font-size: 12px; background: #f6efe2; border-radius: 8px; padding: 4px 8px; }
+  .lunch.secret { color: var(--muted); }
+
+  /* ---------- ログ ---------- */
+  .lower { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
+  #log { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; max-height: 220px; overflow-y: auto; font-size: 13px; }
+  #log div { padding: 2px 0; border-bottom: 1px dotted var(--line); }
+  #log .ev { color: var(--accent); font-weight: bold; }
+
+  /* ---------- モーダル・トースト ---------- */
+  .overlay { position: fixed; inset: 0; background: rgba(40,30,20,.45); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 10; }
+  .modal { background: var(--panel); border-radius: 16px; padding: 18px; max-width: 640px; width: 100%; max-height: 92vh; overflow-y: auto; }
+  .modal h2 { margin: 0 0 8px; font-size: 18px; }
+  .lunch-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .lcard { border: 2px solid var(--line); border-radius: 12px; padding: 10px; cursor: pointer; background: #fff; }
+  .lcard:hover { border-color: var(--accent); }
+  .lcard .big { font-size: 30px; }
+  .lcard .t { font-weight: bold; }
+  .lcard dl { display: grid; grid-template-columns: auto 1fr; gap: 0 8px; font-size: 13px; margin: 6px 0 0; }
+  .lcard dt { color: var(--muted); }
+  .lcard dd { margin: 0; }
+  table.res { border-collapse: collapse; width: 100%; font-size: 13px; }
+  table.res th, table.res td { border-bottom: 1px solid var(--line); padding: 4px 6px; text-align: right; }
+  table.res th:first-child, table.res td:first-child { text-align: left; }
+  table.res tr.total td { font-weight: bold; font-size: 15px; }
+  .win { color: var(--accent); font-weight: bold; }
+  #toast { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 12px; z-index: 20; max-width: calc(100% - 32px); text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+
+  @media (max-width: 600px) {
+    .lunch-opts { grid-template-columns: 1fr; }
+    #players { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= 準備画面 ================= -->
+<div id="setup" class="wrap">
+  <div class="box">
+    <h1>🍳 朝食ビュッフェ（仮）</h1>
+    <div class="sub">12:00 の絶品ランチに備えて、腹八分目で満足度を稼ごう。2〜4人・ビュッフェ台を2周。</div>
+    <p>
+      人数
+      <select id="sel-count">
+        <option value="2">2人</option>
+        <option value="3">3人</option>
+        <option value="4" selected>4人</option>
+      </select>
+    </p>
+    <div id="seats"></div>
+    <p><button id="btn-start" class="primary">ゲーム開始</button></p>
+    <ul class="rules">
+      <li>一番後ろ（同じマスなら一番上）のコマの人が手番。0〜4マス進む。</li>
+      <li>誰もいない料理マスに止まったら料理を1個取ってトレイに置く。誰かいたら相乗り（取れないが次の手番が早い）。</li>
+      <li>同じ料理はその場で「おかわり（0マス移動）」して2個まで取れる。</li>
+      <li>満腹度がランチ予定カードの上限以下ならランチ成功。13 に達するとバースト（−5点）。</li>
+      <li>トレイに6色そろえば＋6、上段か下段が同色3つなら1列につき＋3。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ================= ゲーム画面 ================= -->
+<div id="game" class="wrap hidden">
+  <div class="topbar">
+    <div>
+      <h1>🍳 朝食ビュッフェ（仮）</h1>
+      <div class="sub" id="status-line"></div>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+  <div class="board-scroll"><div id="board"></div></div>
+  <div id="action"></div>
+  <div id="players"></div>
+  <div class="lower">
+    <div id="log"></div>
+  </div>
+</div>
+
+<div id="overlay" class="overlay hidden"><div class="modal" id="modal"></div></div>
+<div id="toast" class="hidden"></div>
+
+<script>
+// ================================================================
+// データ
+// ================================================================
+const COLORS = {
+  brown:  { name: '茶', genre: '洋食・肉',   hex: 'var(--c-brown)' },
+  red:    { name: '赤', genre: '中華',       hex: 'var(--c-red)' },
+  blue:   { name: '青', genre: '和食・海鮮', hex: 'var(--c-blue)' },
+  yellow: { name: '黄', genre: '主食',       hex: 'var(--c-yellow)' },
+  green:  { name: '緑', genre: '野菜',       hex: 'var(--c-green)' },
+  pink:   { name: '桃', genre: '甘味・果物', hex: 'var(--c-pink)' },
+};
+const COLOR_KEYS = Object.keys(COLORS);
+
+// supply: 'heap'=山盛り(人数) / 'normal'=通常(人数−1、最低2) / 数字=限定
+// bonus: 置いたマスの条件を満たすと追加の満足度
+//   { adj: 色 }    … 上下左右の隣にその色がある
+//   { row: 'top'|'bottom' } … 上段 / 下段に置く
+//   { corner: true } … 四隅に置く
+const DISHES = [
+  { id: 'b1', color: 'brown',  name: 'スクランブルエッグ', emoji: '🍳', full: 1,  sat: 2, supply: 'normal', star: true, bonus: { adj: 'yellow', pts: 1 } },
+  { id: 'b2', color: 'brown',  name: 'カリカリベーコン',   emoji: '🥓', full: 2,  sat: 3, supply: 'heap',   bonus: { row: 'top', pts: 1 } },
+  { id: 'b3', color: 'brown',  name: 'ローストビーフ',     emoji: '🥩', full: 3,  sat: 5, supply: 1,        bonus: { corner: true, pts: 1 } },
+  { id: 'b4', color: 'brown',  name: 'ブラックコーヒー',   emoji: '☕', full: -1, sat: 1, supply: 'heap',   bonus: null },
+  { id: 'r1', color: 'red',    name: '小籠包',             emoji: '🥟', full: 2,  sat: 3, supply: 'normal', star: true, bonus: { adj: 'red', pts: 1 } },
+  { id: 'r2', color: 'red',    name: '焼売',               emoji: '🥢', full: 1,  sat: 2, supply: 'heap',   bonus: { adj: 'green', pts: 1 } },
+  { id: 'r3', color: 'red',    name: '麻婆豆腐',           emoji: '🌶️', full: 2,  sat: 4, supply: 2,        bonus: { adj: 'yellow', pts: 2 } },
+  { id: 'r4', color: 'red',    name: '春巻き',             emoji: '🌯', full: 2,  sat: 3, supply: 'normal', bonus: { row: 'bottom', pts: 1 } },
+  { id: 'u1', color: 'blue',   name: '焼き鮭',             emoji: '🐟', full: 1,  sat: 3, supply: 'normal', star: true, bonus: { adj: 'yellow', pts: 1 } },
+  { id: 'u2', color: 'blue',   name: '海鮮ちらし',         emoji: '🍣', full: 2,  sat: 5, supply: 1,        bonus: null },
+  { id: 'u3', color: 'blue',   name: '緑茶',               emoji: '🍵', full: -1, sat: 1, supply: 'heap',   bonus: null },
+  { id: 'u4', color: 'blue',   name: '茶碗蒸し',           emoji: '🥚', full: 1,  sat: 2, supply: 'heap',   bonus: { adj: 'green', pts: 1 } },
+  { id: 'y1', color: 'yellow', name: 'クロワッサン',       emoji: '🥐', full: 2,  sat: 2, supply: 'normal', star: true, bonus: { adj: 'brown', pts: 1 } },
+  { id: 'y2', color: 'yellow', name: '白ごはん',           emoji: '🍚', full: 2,  sat: 2, supply: 'heap',   bonus: { adj: 'blue', pts: 2 } },
+  { id: 'y3', color: 'yellow', name: 'フレンチトースト',   emoji: '🍞', full: 3,  sat: 4, supply: 'normal', bonus: { adj: 'pink', pts: 2 } },
+  { id: 'y4', color: 'yellow', name: 'おにぎり',           emoji: '🍙', full: 2,  sat: 3, supply: 'normal', bonus: { row: 'bottom', pts: 1 } },
+  { id: 'g1', color: 'green',  name: 'グリーンサラダ',     emoji: '🥗', full: 0,  sat: 1, supply: 'heap',   star: true, bonus: { adj: 'brown', pts: 1 } },
+  { id: 'g2', color: 'green',  name: 'ラタトゥイユ',       emoji: '🍅', full: 1,  sat: 2, supply: 'normal', bonus: { adj: 'red', pts: 1 } },
+  { id: 'g3', color: 'green',  name: '温野菜',             emoji: '🥦', full: 1,  sat: 2, supply: 'heap',   bonus: { corner: true, pts: 1 } },
+  { id: 'g4', color: 'green',  name: 'アボカドボウル',     emoji: '🥑', full: 1,  sat: 3, supply: 2,        bonus: { row: 'top', pts: 1 } },
+  { id: 'p1', color: 'pink',   name: 'フルーツヨーグルト', emoji: '🍓', full: 1,  sat: 2, supply: 'normal', star: true, bonus: { adj: 'green', pts: 1 } },
+  { id: 'p2', color: 'pink',   name: 'パンケーキ',         emoji: '🥞', full: 3,  sat: 4, supply: 'normal', bonus: { row: 'top', pts: 2 } },
+  { id: 'p3', color: 'pink',   name: '苺タルト',           emoji: '🍰', full: 2,  sat: 5, supply: 1,        bonus: null },
+  { id: 'p4', color: 'pink',   name: 'カットフルーツ',     emoji: '🍉', full: 0,  sat: 1, supply: 'heap',   bonus: { adj: 'pink', pts: 1 } },
+];
+
+const EVENTS = [
+  { id: 'chef',    name: 'シェフのおすすめ',         emoji: '👨‍🍳', text: '1着でゴールした人は満足度＋3' },
+  { id: 'coffee',  name: 'モーニングコーヒーサービス', emoji: '☕', text: '全員の満腹度−1' },
+  { id: 'wagon',   name: 'ワゴンサービス',           emoji: '🛒', text: '場の料理カードすべてにトークンを1個ずつ追加' },
+  { id: 'cleanup', name: 'お片付けタイム',           emoji: '🧹', text: '場の料理カードからトークンを1個ずつ下げる（最後の1個は残る）' },
+];
+
+// aff: トレイの色ごとの個数 → 相性条件を満たすか
+const LUNCHES = [
+  { id: 'sushi',   name: '回らないお寿司', emoji: '🍣', cap: 6, base: 10, exact: 3, affPts: 3, affText: '青が1個以下',          aff: c => c.blue <= 1 },
+  { id: 'steak',   name: '鉄板ステーキ',   emoji: '🥩', cap: 5, base: 12, exact: 3, affPts: 3, affText: '緑が2個以上',          aff: c => c.green >= 2 },
+  { id: 'ramen',   name: '濃厚ラーメン',   emoji: '🍜', cap: 8, base: 8,  exact: 2, affPts: 3, affText: '赤が2個以上',          aff: c => c.red >= 2 },
+  { id: 'curry',   name: '本格カレー',     emoji: '🍛', cap: 7, base: 9,  exact: 2, affPts: 4, affText: '黄が0個',              aff: c => c.yellow === 0 },
+  { id: 'tempura', name: '天ぷら御膳',     emoji: '🍤', cap: 7, base: 9,  exact: 2, affPts: 3, affText: '青と緑が各1個以上',    aff: c => c.blue >= 1 && c.green >= 1 },
+  { id: 'chinese', name: '中華フルコース', emoji: '🥡', cap: 6, base: 11, exact: 3, affPts: 3, affText: '赤が0個',              aff: c => c.red === 0 },
+  { id: 'soba',    name: 'ざる蕎麦',       emoji: '🥢', cap: 9, base: 6,  exact: 2, affPts: 3, affText: '桃が2個以上',          aff: c => c.pink >= 2 },
+  { id: 'cafe',    name: 'パンケーキカフェ', emoji: '🥞', cap: 8, base: 7, exact: 2, affPts: 3, affText: '桃が0個',             aff: c => c.pink === 0 },
+];
+
+const PIECE_COLORS = ['#5b6b7a', '#1f3f73', '#e0782f', '#7a4aa0'];
+const MAX_FULL = 13;
+const START = 0, GOAL = 7;               // 0=スタート、1〜6=料理マス、7=ゴール
+const ROWS = [[0, 1, 2], [3, 4, 5]];
+const ADJ = [[1, 3], [0, 2, 4], [1, 5], [0, 4], [1, 3, 5], [2, 4]];
+const CORNERS = [0, 2, 3, 5];
+
+const FAST = new URLSearchParams(location.search).has('fast');   // 自動テスト用: CPU の待ち時間なし
+const CPU_DELAY = FAST ? 0 : 800;
+
+// ================================================================
+// ユーティリティ
+// ================================================================
+const $ = sel => document.querySelector(sel);
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+function shuffle(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+const signed = v => (v > 0 ? '＋' : v < 0 ? '−' : '±') + Math.abs(v);
+
+function supplyCount(card, n) {
+  if (card.supply === 'heap') return n;
+  if (card.supply === 'normal') return Math.max(2, n - 1);
+  return card.supply;
+}
+function supplyLabel(card) {
+  if (card.supply === 'heap') return '山盛り';
+  if (card.supply === 'normal') return '通常';
+  return `限定${card.supply}個`;
+}
+function bonusText(b) {
+  if (!b) return '配置ボーナスなし';
+  if (b.adj) return `隣に${COLORS[b.adj].name}があれば＋${b.pts}`;
+  if (b.row) return `${b.row === 'top' ? '上段' : '下段'}に置くと＋${b.pts}`;
+  if (b.corner) return `四隅に置くと＋${b.pts}`;
+  return '';
+}
+function placementBonus(tray, cell, card) {
+  const b = card.bonus;
+  if (!b) return 0;
+  if (b.adj) return ADJ[cell].some(i => tray[i] && tray[i].color === b.adj) ? b.pts : 0;
+  if (b.row) return (b.row === 'top' ? cell < 3 : cell >= 3) ? b.pts : 0;
+  if (b.corner) return CORNERS.includes(cell) ? b.pts : 0;
+  return 0;
+}
+function colorCounts(tray) {
+  const c = Object.fromEntries(COLOR_KEYS.map(k => [k, 0]));
+  tray.forEach(t => { if (t) c[t.color]++; });
+  return c;
+}
+const emptyCells = tray => tray.map((t, i) => t ? -1 : i).filter(i => i >= 0);
+
+// ================================================================
+// ゲーム状態
+// ================================================================
+let G = null;
+window.__state = () => G;   // 自動テスト用
+
+function newSquare(card) {
+  return { card, uid: ++G.uid, tokens: card ? supplyCount(card, G.n) : 0 };
+}
+
+function newGame(seats) {
+  const n = seats.length;
+  const stars = shuffle(DISHES.filter(d => d.star));
+  const rest = shuffle(DISHES.filter(d => !d.star));
+  G = {
+    n, uid: 0, lap: 1, phase: 'lunch', current: null, pending: null,
+    players: seats.map((s, i) => ({
+      i, name: s.name, cpu: s.cpu, color: PIECE_COLORS[i],
+      pos: START, tray: Array(6).fill(null), full: 0, sat: 0,
+      lunch: null, lunchOpts: [], stay: null, ranks: [],
+    })),
+    squares: [], deck: rest, discard: [],
+    events: shuffle(EVENTS).slice(0, 2), revealed: [],
+    stacks: Array.from({ length: 8 }, () => []),   // 各マスのコマ。配列の末尾が一番上
+    finish: [], log: [], peek: false,
+  };
+  G.squares = stars.map(c => newSquare(c));
+
+  // スタートプレイヤーから時計回りに重ねる(最後に置いた人が一番上)
+  G.startPlayer = Math.floor(Math.random() * n);
+  for (let k = 0; k < n; k++) G.stacks[START].push((G.startPlayer + k) % n);
+
+  const lunches = shuffle(LUNCHES);
+  G.players.forEach((p, i) => { p.lunchOpts = lunches.slice(i * 2, i * 2 + 2); });
+  G.players.filter(p => p.cpu).forEach(p => { p.lunch = cpuPickLunch(p); });
+
+  log(`ゲーム開始！ スタートプレイヤーは ${G.players[G.startPlayer].name}。`);
+  $('#setup').classList.add('hidden');
+  $('#game').classList.remove('hidden');
+  render();
+  nextLunchChoice();
+}
+
+function log(msg, cls) {
+  G.log.unshift({ msg, cls });
+  renderLog();
+}
+
+const humans = () => G.players.filter(p => !p.cpu);
+const canSeeLunch = p => !p.cpu && (humans().length === 1 || (G.peek && G.current === p.i));
+
+// ---------- ランチ予定カードの選択 ----------
+function nextLunchChoice() {
+  const p = G.players.find(q => !q.lunch);
+  if (!p) { closeModal(); G.phase = 'play'; advance(); return; }
+  const showChoice = () => {
+    openModal(`
+      <h2>${esc(p.name)} さんのランチ予定カード</h2>
+      <div class="sub">場の定番料理を見てから、1枚を選んで伏せます（もう1枚は箱へ）。</div>
+      <div class="lunch-opts">${p.lunchOpts.map((l, k) => `
+        <div class="lcard" data-lunch="${k}">${lunchCardHtml(l)}</div>`).join('')}
+      </div>
+      <p class="sub">ボードを確認するには <button id="btn-hide-modal">一旦閉じる</button></p>`);
+    document.querySelectorAll('[data-lunch]').forEach(el => el.onclick = () => {
+      p.lunch = p.lunchOpts[+el.dataset.lunch];
+      log(`${p.name} がランチ予定カードを1枚伏せた。`);
+      render();
+      nextLunchChoice();
+    });
+    $('#btn-hide-modal').onclick = () => {
+      closeModal();
+      setAction(`<div class="who">${esc(p.name)} さんのランチ予定カード選択中</div>
+        <div class="moves"><button class="primary" id="btn-reopen">カードを選ぶ</button></div>`);
+      $('#btn-reopen').onclick = showChoice;
+    };
+  };
+  if (humans().length > 1) {
+    openModal(`<h2>${esc(p.name)} さんの番です</h2>
+      <p>他の人には見えないようにしてください。</p>
+      <button class="primary" id="btn-ready">見る</button>`);
+    $('#btn-ready').onclick = showChoice;
+  } else {
+    showChoice();
+  }
+}
+
+function lunchCardHtml(l) {
+  return `<div class="big">${l.emoji}</div>
+    <div class="t">12:00 ${esc(l.name)}</div>
+    <dl>
+      <dt>満腹度上限</dt><dd><b>${l.cap}</b> 以下で成功</dd>
+      <dt>基礎満足度</dt><dd>＋${l.base}</dd>
+      <dt>ピタリ賞</dt><dd>満腹度がちょうど ${l.cap} なら＋${l.exact}</dd>
+      <dt>相性</dt><dd>${esc(l.affText)}なら＋${l.affPts}</dd>
+    </dl>`;
+}
+
+// ---------- 手番 ----------
+function activePlayer() {
+  for (let pos = START; pos < GOAL; pos++) {
+    const st = G.stacks[pos];
+    if (st.length) return st[st.length - 1];
+  }
+  return null;
+}
+
+function canStay(p) {
+  if (p.pos === START || p.pos === GOAL) return false;
+  const sq = G.squares[p.pos - 1];
+  return !!(sq.card && sq.tokens > 0 && p.stay && p.stay.uid === sq.uid && p.stay.count === 1 && emptyCells(p.tray).length);
+}
+
+function legalMoves(p) {
+  const res = [];
+  for (let k = p.pos === START ? 1 : 0; k <= 4; k++) {
+    if (k === 0 && !canStay(p)) continue;
+    res.push({ k, to: Math.min(p.pos + k, GOAL) });
+  }
+  return res;
+}
+
+function advance() {
+  if (G.phase !== 'play') return;
+  const pi = activePlayer();
+  G.current = pi;
+  G.peek = false;
+  render();
+  const p = G.players[pi];
+  if (p.cpu) setTimeout(() => cpuTurn(p), CPU_DELAY);
+}
+
+// 何が起きるかの説明(ボタンの文言と CPU の判断で共用)
+function landingInfo(p, k) {
+  const to = Math.min(p.pos + k, GOAL);
+  if (to === GOAL) return { to, kind: 'goal' };
+  const others = G.stacks[to].filter(i => i !== p.i).length > 0;
+  const sq = G.squares[to - 1];
+  if (others) return { to, kind: 'ride' };
+  if (!sq.card || sq.tokens === 0) return { to, kind: 'none' };
+  if (!emptyCells(p.tray).length) return { to, kind: 'full' };
+  return { to, kind: 'take', sq };
+}
+
+function doMove(pi, k) {
+  if (G.phase !== 'play' || G.current !== pi) return;
+  const p = G.players[pi];
+  if (!legalMoves(p).some(m => m.k === k)) return;
+  const from = p.pos;
+  const info = landingInfo(p, k);
+  const st = G.stacks[from];
+  st.splice(st.indexOf(pi), 1);
+  G.stacks[info.to].push(pi);
+  p.pos = info.to;
+  if (k > 0) p.stay = null;
+
+  if (info.kind === 'goal') { arriveGoal(p); return; }
+  const sq = G.squares[info.to - 1];
+  if (info.kind === 'ride') {
+    log(`${p.name} は ${sq.card ? sq.card.name : '空き皿'} に相乗り（料理は取れない）。`);
+  } else if (info.kind === 'none') {
+    log(`${p.name} は料理のないマスに止まった。`);
+  } else if (info.kind === 'full') {
+    log(`${p.name} はトレイが満杯で ${sq.card.name} を取れない。`);
+  } else {
+    G.phase = 'place';
+    G.pending = { pi, s: info.to - 1, again: k === 0 };
+    render();
+    if (p.cpu) setTimeout(() => place(pi, cpuPickCell(p, sq.card)), CPU_DELAY / 2);
+    return;
+  }
+  advance();
+}
+
+function place(pi, cell) {
+  if (G.phase !== 'place' || G.pending.pi !== pi) return;
+  const p = G.players[pi];
+  if (p.tray[cell]) return;
+  const s = G.pending.s, sq = G.squares[s], c = sq.card;
+  const bonus = placementBonus(p.tray, cell, c);
+  const before = p.full;
+  p.tray[cell] = { color: c.color, emoji: c.emoji, name: c.name };
+  p.full = clamp(p.full + c.full, 0, MAX_FULL);
+  p.sat += c.sat + bonus;
+  sq.tokens--;
+  p.stay = (p.stay && p.stay.uid === sq.uid) ? { uid: sq.uid, count: 2 } : { uid: sq.uid, count: 1 };
+  log(`${p.name} が ${G.pending.again ? 'おかわりで ' : ''}${c.emoji}${c.name} を取った（満腹度 ${before}→${p.full}、満足度 ＋${c.sat}${bonus ? ` ＋配置ボーナス${bonus}` : ''}）。`);
+  if (p.full >= MAX_FULL && before < MAX_FULL) log(`${p.name} は食べすぎバースト状態！`, 'ev');
+  if (sq.tokens === 0) {
+    G.discard.push(c);
+    G.squares[s] = newSquare(G.deck.length ? G.deck.pop() : null);
+    const nc = G.squares[s].card;
+    log(nc ? `${c.name} が品切れ → ${nc.emoji}${nc.name} を補充。` : `${c.name} が品切れ（山札がないので補充なし）。`);
+  }
+  G.phase = 'play';
+  G.pending = null;
+  advance();
+}
+
+function arriveGoal(p) {
+  const rank = G.finish.length + 1;
+  G.finish.push(p.i);
+  p.ranks[G.lap - 1] = rank;
+  log(`${p.name} が ${G.lap}周目を ${rank}着でゴール。`);
+  if (rank === 1) {
+    const ev = G.events[G.lap - 1];
+    G.revealed.push(ev);
+    applyEvent(ev, p);
+    log(`イベント「${ev.name}」発動：${ev.text}`, 'ev');
+    toast(`${ev.emoji} イベント「${ev.name}」<br>${ev.text}`);
+  }
+  const relief = rank === 1 ? 2 : rank === 2 ? 1 : 0;
+  if (relief) {
+    const before = p.full;
+    p.full = clamp(p.full - relief, 0, MAX_FULL);
+    log(`早抜け消化ボーナス：${p.name} の満腹度 ${before}→${p.full}。`);
+  }
+  if (G.finish.length === G.n) endLap();
+  else advance();
+}
+
+function applyEvent(ev, p) {
+  if (ev.id === 'chef') p.sat += 3;
+  if (ev.id === 'coffee') G.players.forEach(q => { q.full = clamp(q.full - 1, 0, MAX_FULL); });
+  if (ev.id === 'wagon') G.squares.forEach(sq => { if (sq.card) sq.tokens++; });
+  if (ev.id === 'cleanup') G.squares.forEach(sq => { if (sq.card && sq.tokens > 1) sq.tokens--; });
+}
+
+function endLap() {
+  if (G.lap === 2) { endGame(); return; }
+  G.squares.forEach(sq => { if (sq.card) G.discard.push(sq.card); });
+  G.squares = [];
+  for (let s = 0; s < 6; s++) G.squares.push(newSquare(G.deck.length ? G.deck.pop() : null));
+  G.stacks = Array.from({ length: 8 }, () => []);
+  // 遅くゴールした人から重ねる → 1着が一番上
+  G.finish.slice().reverse().forEach(pi => {
+    G.stacks[START].push(pi);
+    const p = G.players[pi];
+    p.pos = START;
+    p.stay = null;
+  });
+  G.finish = [];
+  G.lap = 2;
+  log('全員ゴール！ 料理を総入れ替えして2周目へ。', 'ev');
+  toast('🔁 2周目スタート！ 料理が総入れ替えされました');
+  advance();
+}
+
+// ---------- 得点計算 ----------
+function finalScore(p) {
+  const counts = colorCounts(p.tray);
+  const rainbow = COLOR_KEYS.every(k => counts[k] === 1) ? 6 : 0;
+  const rows = ROWS.filter(r => r.every(i => p.tray[i]) && r.every(i => p.tray[i].color === p.tray[r[0]].color)).length * 3;
+  const L = p.lunch;
+  const ok = p.full <= L.cap;
+  const lunch = ok ? L.base : 0;
+  const exact = ok && p.full === L.cap ? L.exact : 0;
+  const aff = ok && L.aff(counts) ? L.affPts : 0;
+  const burst = p.full >= MAX_FULL ? -5 : 0;
+  return { base: p.sat, rainbow, rows, ok, lunch, exact, aff, burst,
+           total: p.sat + rainbow + rows + lunch + exact + aff + burst };
+}
+
+function endGame() {
+  G.phase = 'end';
+  G.current = null;
+  const res = G.players.map(p => ({ p, s: finalScore(p) }));
+  const ranked = res.slice().sort((a, b) => b.s.total - a.s.total || a.p.full - b.p.full);
+  const best = ranked[0];
+  const winners = ranked.filter(r => r.s.total === best.s.total && r.p.full === best.p.full);
+  G.result = { res, winners: winners.map(w => w.p.i) };
+  log(`12:00 ランチタイム！ 勝者：${winners.map(w => w.p.name).join('・')}`, 'ev');
+  render();
+  showResult();
+}
+
+function showResult() {
+  const { res: cols, winners } = G.result;
+  const names = winners.map(i => esc(G.players[i].name)).join('・');
+  const row = (label, f) => `<tr><td>${label}</td>${cols.map(r => `<td>${f(r)}</td>`).join('')}</tr>`;
+  openModal(`
+    <h2>🕛 12:00 ランチタイム！</h2>
+    <p class="win">🏆 勝者：${names}</p>
+    <div style="overflow-x:auto">
+    <table class="res">
+      <tr><th></th>${cols.map(r => `<th>${esc(r.p.name)}</th>`).join('')}</tr>
+      ${row('ランチ予定', r => `${r.p.lunch.emoji}${esc(r.p.lunch.name)}<br><span class="sub">上限 ${r.p.lunch.cap}</span>`)}
+      ${row('終了時の満腹度', r => r.p.full)}
+      ${row('ビュッフェでの満足度', r => r.s.base)}
+      ${row('6色彩りコンプリート', r => r.s.rainbow || '—')}
+      ${row('横一列・同色定食', r => r.s.rows || '—')}
+      ${row('ランチ', r => r.s.ok ? `成功 ＋${r.s.lunch}` : '<span style="color:var(--bad)">失敗 0</span>')}
+      ${row('ピタリ賞', r => r.s.exact || '—')}
+      ${row('相性ボーナス', r => r.s.aff || '—')}
+      ${row('食べすぎバースト', r => r.s.burst || '—')}
+      <tr class="total"><td>合計</td>${cols.map(r => `<td class="${G.result.winners.includes(r.p.i) ? 'win' : ''}">${r.s.total}</td>`).join('')}</tr>
+    </table>
+    </div>
+    <p><button class="primary" id="btn-again">もう一度遊ぶ</button> <button id="btn-close">盤面を見る</button></p>`);
+  $('#btn-again').onclick = () => { closeModal(); $('#game').classList.add('hidden'); $('#setup').classList.remove('hidden'); };
+  $('#btn-close').onclick = closeModal;
+}
+
+// ================================================================
+// CPU
+// ================================================================
+function cpuPickLunch(p) {
+  // 上限が低いほど大変なので、基礎点を少し割り引いて比べる
+  const v = l => l.base + l.affPts * 0.4 + (l.cap - 6) * 0.8 + Math.random() * 2;
+  return p.lunchOpts.slice().sort((a, b) => v(b) - v(a))[0];
+}
+
+// 満腹度が増えることのコスト(ランチ上限を越えるなら大きく減点)
+function fullCost(p, delta) {
+  const after = clamp(p.full + delta, 0, MAX_FULL);
+  const lapsLeft = G.lap === 1 ? 2 : 1;
+  const slack = p.lunch.cap + lapsLeft - 0.3;   // ゴールでの消化を少し見込む
+  let cost = (after - p.full) * 0.6;
+  const lunchVal = p.lunch.base + 1.5;
+  if (after > slack && p.full <= slack) cost += lunchVal;
+  if (after >= MAX_FULL && p.full < MAX_FULL) cost += 5;
+  if (after === p.lunch.cap) cost -= p.lunch.exact * 0.3;
+  return cost;
+}
+
+function cellValue(p, cell, card) {
+  let v = placementBonus(p.tray, cell, card);
+  const row = ROWS.find(r => r.includes(cell));
+  const others = row.filter(i => i !== cell).map(i => p.tray[i]);
+  const filled = others.filter(Boolean);
+  if (filled.length && filled.every(t => t.color === card.color)) v += filled.length === 2 ? 3 : 1;
+  else if (!filled.length) v += 0.2;
+  return v + Math.random() * 0.1;
+}
+
+function takeValue(p, card) {
+  const cells = emptyCells(p.tray);
+  const bestCell = Math.max(...cells.map(c => cellValue(p, c, card)));
+  const counts = colorCounts(p.tray);
+  let v = card.sat + bestCell - fullCost(p, card.full);
+  const distinct = COLOR_KEYS.filter(k => counts[k]).length;
+  const rainbowAlive = distinct === 6 - cells.length;   // まだ全部ちがう色
+  if (rainbowAlive) v += counts[card.color] ? -1.2 : 1.2;
+  const after = { ...counts, [card.color]: counts[card.color] + 1 };
+  v += (p.lunch.aff(after) - p.lunch.aff(counts)) * p.lunch.affPts * 0.8;
+  if (G.lap === 1 && cells.length <= 3) v -= 0.6;   // 2周目のために枠を少し残したい
+  return v;
+}
+
+function moveValue(p, m) {
+  const info = landingInfo(p, m.k);
+  let v;
+  if (info.kind === 'goal') {
+    const rank = G.finish.length + 1;
+    const relief = rank === 1 ? 2 : rank === 2 ? 1 : 0;
+    v = relief * (p.full > p.lunch.cap ? 3 : 0.8) - 0.5;
+    if (!emptyCells(p.tray).length) v += 3;
+  } else if (info.kind === 'take') {
+    v = takeValue(p, info.sq.card);
+  } else {
+    v = 0;
+  }
+  return v - m.k * 0.15 + Math.random() * 0.6;
+}
+
+function cpuTurn(p) {
+  if (G.phase !== 'play' || G.current !== p.i) return;
+  const moves = legalMoves(p);
+  let best = moves[0], bestV = -Infinity;
+  moves.forEach(m => { const v = moveValue(p, m); if (v > bestV) { bestV = v; best = m; } });
+  doMove(p.i, best.k);
+}
+
+function cpuPickCell(p, card) {
+  const cells = emptyCells(p.tray);
+  return cells.reduce((a, b) => cellValue(p, b, card) > cellValue(p, a, card) ? b : a);
+}
+
+// ================================================================
+// 描画
+// ================================================================
+function render() {
+  renderStatus();
+  renderBoard();
+  renderAction();
+  renderPlayers();
+}
+
+function renderStatus() {
+  const left = G.events.length - G.revealed.length;
+  $('#status-line').textContent = `${G.lap}周目 / 全2周　山札 ${G.deck.length}枚`;
+  $('#chips').innerHTML = [
+    `<span class="chip">イベント 残り${left}枚</span>`,
+    ...G.revealed.map(e => `<span class="chip" title="${esc(e.text)}">${e.emoji} ${esc(e.name)}</span>`),
+  ].join('');
+}
+
+function pieceHtml(pi, isTop) {
+  const p = G.players[pi];
+  const now = G.current === pi && G.phase !== 'end';
+  return `<div class="piece ${isTop ? 'top' : ''} ${now ? 'now' : ''}" style="background:${p.color}">${esc(p.name)}</div>`;
+}
+
+function stackHtml(pos) {
+  const st = G.stacks[pos];
+  return `<div class="stack">${st.slice().reverse().map((pi, k) => pieceHtml(pi, k === 0 && st.length > 1)).join('')}</div>`;
+}
+
+function cardHtml(sq) {
+  const c = sq.card;
+  if (!c) return `<div class="card empty">（料理なし）</div>`;
+  const col = COLORS[c.color];
+  return `<div class="card">
+    <div class="band" style="background:${col.hex}"><span>${col.genre}</span><span>${c.star ? '★' : ''}</span></div>
+    <div class="emoji">${c.emoji}</div>
+    <div class="name">${esc(c.name)}</div>
+    <div class="stats"><span>満腹<b>${signed(c.full)}</b></span><span>満足<b>＋${c.sat}</b></span></div>
+    <div class="bonus">${bonusText(c.bonus)}</div>
+    <div class="supply">${supplyLabel(c)}・残り${sq.tokens}</div>
+    <div class="tokens">${Array.from({ length: sq.tokens }, () => `<span class="tok" style="background:${col.hex}"></span>`).join('')}</div>
+  </div>`;
+}
+
+function renderBoard() {
+  const p = G.current != null ? G.players[G.current] : null;
+  const human = p && !p.cpu && G.phase === 'play';
+  const targets = new Map();
+  if (human) legalMoves(p).forEach(m => { if (!targets.has(m.to)) targets.set(m.to, m.k); });
+  const slots = [];
+  for (let pos = START; pos <= GOAL; pos++) {
+    let inner;
+    if (pos === START) inner = `<div class="card special"><div class="emoji">🍽️</div><b>スタート</b><div class="sub">料理の山札<br>${G.deck.length}枚</div></div>`;
+    else if (pos === GOAL) {
+      const left = G.events.length - G.revealed.length;
+      inner = `<div class="card special"><div class="emoji">🏁</div><b>ゴール</b><div class="sub">${G.lap}周目<br>伏せたイベント ${left}枚</div><div class="sub">1着 満腹−2<br>2着 満腹−1</div></div>`;
+    } else inner = cardHtml(G.squares[pos - 1]);
+    const t = targets.has(pos);
+    slots.push(`<div class="slot ${t ? 'target' : ''}" ${t ? `data-move="${targets.get(pos)}"` : ''}>${inner}${stackHtml(pos)}</div>`);
+  }
+  $('#board').innerHTML = slots.join('');
+  document.querySelectorAll('[data-move]').forEach(el => el.onclick = () => doMove(G.current, +el.dataset.move));
+}
+
+function setAction(html) { $('#action').innerHTML = html; }
+
+function renderAction() {
+  if (G.phase === 'lunch') { setAction(`<div class="who">ランチ予定カードを選んでいます…</div>`); return; }
+  if (G.phase === 'end') {
+    setAction(`<div class="who">ゲーム終了 — 勝者：${G.result.winners.map(i => esc(G.players[i].name)).join('・')}</div>
+      <div class="moves"><button id="btn-result">結果を見る</button></div>`);
+    $('#btn-result').onclick = showResult;
+    return;
+  }
+  const p = G.players[G.current];
+  const head = `<div class="who"><span class="dot" style="background:${p.color}"></span> ${esc(p.name)} の手番${p.cpu ? '（CPU）' : ''}</div>`;
+  if (G.phase === 'place') {
+    const c = G.squares[G.pending.s].card;
+    setAction(`${head}<div class="hint">${c.emoji}${esc(c.name)} をトレイのどこに置く？（${bonusText(c.bonus)}）${p.cpu ? '' : '— 下の自分のトレイで光っているマスをクリック'}</div>`);
+    return;
+  }
+  if (p.cpu) { setAction(`${head}<div class="hint">考え中…</div>`); return; }
+  const btns = legalMoves(p).map(m => {
+    const info = landingInfo(p, m.k);
+    let what;
+    if (info.kind === 'goal') what = 'ゴール';
+    else if (info.kind === 'take') what = (m.k === 0 ? 'おかわり ' : '') + info.sq.card.emoji + info.sq.card.name;
+    else if (info.kind === 'ride') what = '相乗り';
+    else if (info.kind === 'full') what = 'トレイ満杯';
+    else what = '料理なし';
+    return `<button data-k="${m.k}" class="${info.kind === 'take' ? 'primary' : ''}">${m.k}マス<br><small>${esc(what)}</small></button>`;
+  }).join('');
+  setAction(`${head}
+    <div class="moves">${btns}</div>
+    <div class="hint">ボード上の光っているマスをクリックしても進めます。</div>`);
+  document.querySelectorAll('#action [data-k]').forEach(el => el.onclick = () => doMove(p.i, +el.dataset.k));
+}
+
+function renderPlayers() {
+  const pend = G.phase === 'place' ? G.pending : null;
+  $('#players').innerHTML = G.players.map(p => {
+    const picking = pend && pend.pi === p.i && !p.cpu;
+    const card = pend ? G.squares[pend.s].card : null;
+    const cells = p.tray.map((t, i) => {
+      if (t) return `<div class="cell filled" style="border-color:${COLORS[t.color].hex}" title="${esc(t.name)}">${t.emoji}</div>`;
+      if (picking) {
+        const b = placementBonus(p.tray, i, card);
+        return `<div class="cell pick" data-cell="${i}">${card.emoji}${b ? `<span class="gain">＋${b}</span>` : ''}</div>`;
+      }
+      return `<div class="cell"></div>`;
+    }).join('');
+    const see = !!p.lunch && canSeeLunch(p);
+    const cap = see ? p.lunch.cap : null;
+    const lunchHtml = !p.lunch ? '<div class="lunch secret">ランチ予定：選択中</div>'
+      : see ? `<div class="lunch">🕛 ${p.lunch.emoji}${esc(p.lunch.name)}　上限 <b>${p.lunch.cap}</b>　基礎＋${p.lunch.base}　ピタリ＋${p.lunch.exact}<br>相性：${esc(p.lunch.affText)}なら＋${p.lunch.affPts}</div>`
+      : `<div class="lunch secret">🂠 ランチ予定（伏せ札）${!p.cpu && G.current === p.i && G.phase !== 'end' ? ' <button id="btn-peek">こっそり見る</button>' : ''}</div>`;
+    const rk = p.ranks.map((r, k) => `${k + 1}周目${r}着`).join('・');
+    return `<div class="pl ${G.current === p.i && G.phase !== 'end' ? 'active' : ''}">
+      <div class="head">
+        <div class="nm"><span class="dot" style="background:${p.color}"></span>${esc(p.name)}${p.cpu ? ' <span class="sub">CPU</span>' : ''}</div>
+        <div class="sat">${p.sat}<small> 満足度</small></div>
+      </div>
+      <div class="sub">満腹度 <b style="color:var(--ink)">${p.full}</b> / ${MAX_FULL}${p.full >= MAX_FULL ? ' <b style="color:var(--bad)">バースト！</b>' : ''}${rk ? '　' + rk : ''}</div>
+      <div class="meter ${p.full >= MAX_FULL ? 'burst' : ''}">
+        <div class="fill" style="width:${p.full / MAX_FULL * 100}%"></div>
+        ${cap != null ? `<div class="cap" style="left:calc(${cap / MAX_FULL * 100}% - 1px)" title="ランチ上限"></div>` : ''}
+        <div class="ticks"><span>0</span><span>13</span></div>
+      </div>
+      <div class="tray">${cells}</div>
+      ${lunchHtml}
+    </div>`;
+  }).join('');
+  document.querySelectorAll('[data-cell]').forEach(el => el.onclick = () => place(pend.pi, +el.dataset.cell));
+  const peek = $('#btn-peek');
+  if (peek) peek.onclick = () => { G.peek = true; renderPlayers(); };
+}
+
+function renderLog() {
+  $('#log').innerHTML = G.log.map(l => `<div class="${l.cls || ''}">${esc(l.msg)}</div>`).join('');
+}
+
+function openModal(html) { $('#modal').innerHTML = html; $('#overlay').classList.remove('hidden'); }
+function closeModal() { $('#overlay').classList.add('hidden'); }
+
+let toastTimer = null;
+function toast(html) {
+  const t = $('#toast');
+  t.innerHTML = html;
+  t.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add('hidden'), FAST ? 300 : 3500);
+}
+
+// ================================================================
+// 準備画面
+// ================================================================
+const DEFAULT_NAMES = ['あなた', 'オムレツ', 'ワッフル', 'おみそ'];
+function renderSeats() {
+  const n = +$('#sel-count').value;
+  const prev = [...document.querySelectorAll('.seat')].map(el => ({
+    name: el.querySelector('input').value, cpu: el.querySelector('select').value === 'cpu' }));
+  $('#seats').innerHTML = Array.from({ length: n }, (_, i) => {
+    const s = prev[i] || { name: DEFAULT_NAMES[i], cpu: i > 0 };
+    return `<div class="seat">
+      <span class="dot" style="background:${PIECE_COLORS[i]}"></span>
+      <input value="${esc(s.name)}" maxlength="8" aria-label="名前${i + 1}">
+      <select aria-label="種類${i + 1}">
+        <option value="human" ${s.cpu ? '' : 'selected'}>人間</option>
+        <option value="cpu" ${s.cpu ? 'selected' : ''}>CPU</option>
+      </select>
+    </div>`;
+  }).join('');
+}
+$('#sel-count').onchange = renderSeats;
+renderSeats();
+$('#btn-start').onclick = () => {
+  const seats = [...document.querySelectorAll('.seat')].map((el, i) => ({
+    name: el.querySelector('input').value.trim() || `P${i + 1}`,
+    cpu: el.querySelector('select').value === 'cpu',
+  }));
+  newGame(seats);
+};
+</script>
+</body>
+</html>
