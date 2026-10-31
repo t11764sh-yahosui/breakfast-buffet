@@ -3,6 +3,8 @@
 ホテルの朝食ビュッフェを2周しながら、12:00 のランチに備えて腹八分目で満足度を稼ぐボードゲーム(タイトル未定、画面上は「朝食ビュッフェ(仮)」)。
 2〜4人、1台の端末を回して遊ぶ(各席を人間 / CPU から選べる)。
 
+公開先: https://t11764sh-yahosui.github.io/breakfast-buffet/ (GitHub Pages、`main` に push すると数分で反映)
+
 ## ファイル構成
 
 - `index.html` — ゲーム本体(1ファイル・ビルドなし)。冒頭の `DISHES` / `EVENTS` / `LUNCHES` がカードのデータ
