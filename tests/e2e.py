@@ -42,6 +42,17 @@ def check_end(page, n):
     check(all(p['pos'] == 7 and len(p['ranks']) == 2 for p in g['players']), f'{n}人: 全員が2周ゴール')
     check(all(0 <= p['full'] <= 13 and p['tray'] <= 6 for p in g['players']), f'{n}人: 満腹度とトレイが範囲内')
     check(len(g['winners']) >= 1 and page.is_visible('table.res'), f'{n}人: 結果表を表示 合計={g["totals"]}')
+    # ラウンド: ゴール前の全員がちょうど1回ずつ手番を行い、ゴールした人はその周回で手番を行わない
+    r = page.evaluate('''() => { const G = window.__state(); const by = {};
+        G.turns.forEach(t => { (by[t.lap + '-' + t.round] = by[t.lap + '-' + t.round] || []).push(t); });
+        const bad = []; const done = { 1: new Set(), 2: new Set() };
+        Object.keys(by).sort((a, b) => { const [l1, r1] = a.split('-').map(Number), [l2, r2] = b.split('-').map(Number); return l1 - l2 || r1 - r2; })
+          .forEach(key => { const ts = by[key], lap = ts[0].lap, ids = ts.map(t => t.pi);
+            const expect = G.players.map(p => p.i).filter(i => !done[lap].has(i));
+            if (ids.length !== new Set(ids).size || ids.length !== expect.length) bad.push(key);
+            ts.forEach(t => { if (t.kind === 'goal') done[lap].add(t.pi); }); });
+        return { rounds: Object.keys(by).length, bad }; }''')
+    check(not r['bad'], f'{n}人: 各ラウンドでゴール前の全員が1回ずつ手番 ({r["rounds"]}ラウンド)')
 
 
 def no_hscroll(page, where):

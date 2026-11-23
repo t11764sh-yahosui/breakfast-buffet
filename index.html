@@ -155,6 +155,8 @@
   .piece { display: flex; align-items: center; gap: 4px; border-radius: 999px; color: #fff; font-size: 12px; padding: 1px 8px 1px 6px; white-space: nowrap; overflow: hidden; box-shadow: inset 0 -2px 0 rgba(0,0,0,.2); }
   .piece span { overflow: hidden; text-overflow: ellipsis; }
   .piece.top::after { content: "上"; margin-left: auto; font-size: 9px; background: rgba(255,255,255,.3); border-radius: 4px; padding: 0 3px; }
+  .piece.waiting { opacity: .55; border: 1px dashed rgba(255,255,255,.9); }
+  .piece.waiting::before { content: "未"; font-size: 9px; background: rgba(255,255,255,.3); border-radius: 4px; padding: 0 3px; order: 9; margin-left: auto; }
   .piece.now { outline: 3px solid var(--accent); outline-offset: 1px; font-weight: 700; }
 
   /* ---------- 手番パネル(伝票) ---------- */
@@ -579,6 +581,8 @@ function newGame(seats) {
     squares: [], deck: rest, discard: [],
     events: shuffle(EVENTS).slice(0, 2), revealed: [],
     stacks: Array.from({ length: 8 }, () => []),   // 各マスのコマ。配列の末尾が一番上
+    round: null, roundNo: 0, acted: new Set(),      // 現在のラウンド(手番順と進み具合)と行動済みのプレイヤー
+    turns: [],                                      // 手番の記録(自動テスト用)
     finish: [], log: [], peek: false,
   };
   G.squares = stars.map(c => newSquare(c));
@@ -655,32 +659,41 @@ function lunchCardHtml(l) {
 }
 
 // ---------- 手番 ----------
-function activePlayer() {
-  for (let pos = START; pos < GOAL; pos++) {
-    const st = G.stacks[pos];
-    if (st.length) return st[st.length - 1];
-  }
-  return null;
+// ラウンド開始: まだゴールしていない全員の手番順を決める(後ろのマスから、同じマスでは上のコマから)
+function startRound() {
+  const order = [];
+  for (let pos = START; pos < GOAL; pos++) order.push(...G.stacks[pos].slice().reverse());
+  G.roundNo++;
+  G.round = { order, idx: 0 };
+  G.acted = new Set();
 }
 
-function canStay(p) {
-  if (p.pos === START || p.pos === GOAL) return false;
-  const sq = G.squares[p.pos - 1];
-  return !!(sq.card && sq.tokens > 0 && p.stay && p.stay.uid === sq.uid && p.stay.count === 1 && emptyCells(p.tray).length);
-}
+// トークンが残っている料理マスか(ゴールはいつでも可)
+const isOpen = pos => pos === GOAL || (pos > START && G.squares[pos - 1].tokens > 0);
 
 function legalMoves(p) {
   const res = [];
   for (let k = p.pos === START ? 1 : 0; k <= 4; k++) {
-    if (k === 0 && !canStay(p)) continue;
+    const to = Math.min(p.pos + k, GOAL);
+    if (isOpen(to)) res.push({ k, to });
+    if (to === GOAL) break;
+  }
+  // 0〜4マス先がすべて品切れ(山札切れ)のときは、その先の最初に料理が残っているマスかゴールへ進む
+  if (!res.length) {
+    let k = 5;
+    while (!isOpen(Math.min(p.pos + k, GOAL))) k++;
     res.push({ k, to: Math.min(p.pos + k, GOAL) });
   }
   return res;
 }
 
+// そのマスにいる、このラウンドで行動済みのコマ(配列の末尾が一番上)
+const actedAt = pos => G.stacks[pos].filter(i => G.acted.has(i));
+
 function advance() {
   if (G.phase !== 'play') return;
-  const pi = activePlayer();
+  if (!G.round || G.round.idx >= G.round.order.length) startRound();
+  const pi = G.round.order[G.round.idx];
   G.current = pi;
   G.peek = false;
   render();
@@ -692,10 +705,8 @@ function advance() {
 function landingInfo(p, k) {
   const to = Math.min(p.pos + k, GOAL);
   if (to === GOAL) return { to, kind: 'goal' };
-  const others = G.stacks[to].filter(i => i !== p.i).length > 0;
   const sq = G.squares[to - 1];
-  if (others) return { to, kind: 'ride' };
-  if (!sq.card || sq.tokens === 0) return { to, kind: 'none' };
+  if (actedAt(to).length) return { to, kind: 'ride' };
   if (!emptyCells(p.tray).length) return { to, kind: 'full' };
   return { to, kind: 'take', sq };
 }
@@ -706,25 +717,27 @@ function doMove(pi, k) {
   if (!legalMoves(p).some(m => m.k === k)) return;
   const from = p.pos;
   const info = landingInfo(p, k);
+  // 0マスでも置き直す: 行動済みのコマがあればその一番上、なければずらした場所に単独で置く
   const st = G.stacks[from];
   st.splice(st.indexOf(pi), 1);
   G.stacks[info.to].push(pi);
+  G.acted.add(pi);
+  G.round.idx++;
+  G.turns.push({ lap: G.lap, round: G.roundNo, pi, k, kind: info.kind });
   p.pos = info.to;
   if (k > 0) p.stay = null;
 
   if (info.kind === 'goal') { arriveGoal(p); return; }
   const sq = G.squares[info.to - 1];
   if (info.kind === 'ride') {
-    log(`${p.name} は ${sq.card ? sq.card.name : '空き皿'} に相乗り（料理は取れない）。`);
-  } else if (info.kind === 'none') {
-    log(`${p.name} は料理のないマスに止まった。`);
+    log(`${p.name} は ${sq.card.name} に${k === 0 ? 'とどまったが' : ''}相乗り（料理は取れない）。`);
   } else if (info.kind === 'full') {
     log(`${p.name} はトレイが満杯で ${sq.card.name} を取れない。`);
   } else {
     G.phase = 'place';
     G.pending = { pi, s: info.to - 1, again: k === 0 };
     render();
-    if (p.cpu) setTimeout(() => place(pi, cpuPickCell(p, sq.card, k === 0)), CPU_DELAY / 2);
+    if (p.cpu) setTimeout(() => place(pi, cpuPickCell(p, sq.card, k === 0 && againBonusNext(p, sq))), CPU_DELAY / 2);
     return;
   }
   advance();
@@ -735,14 +748,15 @@ function place(pi, cell) {
   const p = G.players[pi];
   if (p.tray[cell]) return;
   const s = G.pending.s, sq = G.squares[s], c = sq.card;
-  const bonus = placementBonus(p.tray, cell, c, G.pending.again);
+  const again = G.pending.again && !!p.stay && p.stay.uid === sq.uid && p.stay.count === 1;   // おかわりで取った2個目
+  const bonus = placementBonus(p.tray, cell, c, again);
   const before = p.full;
   const gain = fullGain(p, c);
   p.tray[cell] = { color: c.color, emoji: c.emoji, name: c.name };
   p.full = clamp(p.full + gain, 0, MAX_FULL);
   p.sat += c.sat + bonus;
   sq.tokens--;
-  p.stay = (p.stay && p.stay.uid === sq.uid) ? { uid: sq.uid, count: 2 } : { uid: sq.uid, count: 1 };
+  p.stay = (p.stay && p.stay.uid === sq.uid) ? { uid: sq.uid, count: p.stay.count + 1 } : { uid: sq.uid, count: 1 };
   log(`${p.name} が ${G.pending.again ? 'おかわりで ' : ''}${c.emoji}${c.name} を取った（${gain !== c.full ? '別腹！ ' : ''}満腹度 ${before}→${p.full}、満足度 ＋${c.sat}${bonus ? ` ＋ボーナス${bonus}` : ''}）。`);
   if (p.full >= MAX_FULL && before < MAX_FULL) log(`${p.name} は食べすぎバースト状態！`, 'ev');
   if (sq.tokens === 0) {
@@ -820,6 +834,9 @@ function endLap() {
     p.stay = null;
   });
   G.finish = [];
+  G.round = null;
+  G.roundNo = 0;
+  G.acted = new Set();
   G.lap = 2;
   log('全員ゴール！ 料理を総入れ替えして2周目へ。', 'ev');
   toast('🔁 <b>2周目スタート</b><br>料理が総入れ替えされました');
@@ -943,12 +960,15 @@ function moveValue(p, m) {
     v = relief * (p.full > p.lunch.cap ? 3 : 0.8) - 0.5;
     if (!emptyCells(p.tray).length) v += 3;
   } else if (info.kind === 'take') {
-    v = takeValue(p, info.sq.card, m.k === 0);
+    v = takeValue(p, info.sq.card, m.k === 0 && againBonusNext(p, info.sq));
   } else {
-    v = 0;
+    v = m.k === 0 ? -1 : 0;   // 取れないのに居座るより先へ進む
   }
   return v - m.k * 0.15 + Math.random() * 0.6;
 }
+
+// 0マス移動でいま取ると「おかわりの2個目」になるか
+const againBonusNext = (p, sq) => !!p.stay && p.stay.uid === sq.uid && p.stay.count === 1;
 
 function cpuTurn(p) {
   if (G.phase !== 'play' || G.current !== p.i) return;
@@ -1011,22 +1031,30 @@ function renderStatus() {
   const toLunch = 12 * 60 - min;
   $('#clock').innerHTML = `${clockSvg(min)}<div><div class="time">${hh}:${mm}</div>
     <div class="sub">${toLunch > 0 ? `ランチまであと ${Math.floor(toLunch / 60)}時間${toLunch % 60 ? (toLunch % 60) + '分' : ''}` : 'ランチタイム！'}</div></div>`;
-  $('#status-line').textContent = `${G.lap}周目 / 全2周`;
+  $('#status-line').textContent = `${G.lap}周目${G.roundNo ? ` 第${G.roundNo}ラウンド` : ''} / 全2周`;
+  const order = G.round && G.phase !== 'end'
+    ? G.round.order.map((pi, k) => k < G.round.idx && G.current !== pi ? `<s>${esc(G.players[pi].name)}</s>` : esc(G.players[pi].name)).join(' → ')
+    : '';
   $('#chips').innerHTML = [
+    ...(order ? [`<span class="chip order">手番順 ${order}</span>`] : []),
     `<span class="chip">伏せたイベント 残り${left}枚</span>`,
     ...G.revealed.map(e => `<span class="chip" title="${esc(e.text)}">${e.emoji} ${esc(e.name)}</span>`),
   ].join('');
 }
 
-function pieceHtml(pi, isTop) {
+function pieceHtml(pi, cls) {
   const p = G.players[pi];
   const now = G.current === pi && G.phase !== 'end';
-  return `<div class="piece ${isTop ? 'top' : ''} ${now ? 'now' : ''}" style="background:${p.color}">${tongSvg('#fff', 13)}<span>${esc(p.name)}</span></div>`;
+  return `<div class="piece ${cls} ${now ? 'now' : ''}" style="background:${p.color}">${tongSvg('#fff', 13)}<span>${esc(p.name)}</span></div>`;
 }
 
+// 行動済みのコマは重ねて(上が先頭)、未行動のコマはずらした場所に表示する
 function stackHtml(pos) {
   const st = G.stacks[pos];
-  return `<div class="stack">${st.slice().reverse().map((pi, k) => pieceHtml(pi, k === 0 && st.length > 1)).join('')}</div>`;
+  const done = st.filter(i => G.acted.has(i)).reverse();
+  const wait = st.filter(i => !G.acted.has(i)).reverse();
+  const pile = (arr, cls) => arr.map((pi, k) => pieceHtml(pi, `${cls} ${k === 0 && arr.length > 1 ? 'top' : ''}`)).join('');
+  return `<div class="stack">${pile(done, 'acted')}${pile(wait, 'waiting')}</div>`;
 }
 
 function dishHtml(sq) {
@@ -1096,9 +1124,8 @@ function renderAction() {
     let what;
     if (info.kind === 'goal') what = 'お席へ（ゴール）';
     else if (info.kind === 'take') what = (m.k === 0 ? 'おかわり ' : '') + info.sq.card.emoji + info.sq.card.name;
-    else if (info.kind === 'ride') what = '相乗り';
-    else if (info.kind === 'full') what = 'トレイ満杯';
-    else what = '料理なし';
+    else if (info.kind === 'ride') what = (m.k === 0 ? 'とどまる・' : '') + '相乗り';
+    else what = (m.k === 0 ? 'とどまる・' : '') + 'トレイ満杯';
     return `<button data-k="${m.k}" class="${info.kind === 'take' ? 'primary' : ''}">${m.k}マス<br><small>${esc(what)}</small></button>`;
   }).join('');
   setAction(`${head}
@@ -1122,7 +1149,7 @@ function trayCellsHtml(p, card) {
   return p.tray.map((t, i) => {
     if (t) return `<div class="cell filled" style="border-color:${COLORS[t.color].hex}" title="${esc(t.name)}">${t.emoji}</div>`;
     if (card) {
-      const b = placementBonus(p.tray, i, card, G.pending && G.pending.again);
+      const b = placementBonus(p.tray, i, card, !!G.pending && G.pending.again && againBonusNext(p, G.squares[G.pending.s]));
       return `<div class="cell pick" data-cell="${i}">${card.emoji}${b ? `<span class="gain">＋${b}</span>` : ''}</div>`;
     }
     return `<div class="cell vacant"></div>`;
