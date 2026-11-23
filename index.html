@@ -94,6 +94,12 @@
   .member { display: flex; gap: 8px; align-items: center; padding: 6px 2px; border-bottom: 1px dotted var(--line); }
   .member .tag { margin-left: auto; font-size: 11px; color: var(--muted); }
   .member.cpu { color: var(--muted); }
+  .extra-rules { text-align: left; max-width: 420px; margin: 12px auto 16px; padding: 10px 14px; border: 1px dashed var(--brass-light); border-radius: 10px; background: var(--linen); }
+  .extra-rules .eyebrow { display: block; text-align: center; margin-bottom: 4px; }
+  .ropt { display: grid; grid-template-columns: auto 1fr; gap: 0 8px; align-items: start; padding: 4px 0; cursor: pointer; }
+  .ropt input { margin-top: 4px; }
+  .ropt .sub { grid-column: 2; font-size: 12px; }
+  .ropt.off { color: var(--muted); }
   .rules { font-size: 13px; color: var(--muted); text-align: left; margin: 18px 0 0; padding-left: 1.2em; }
   .rules li { margin: 3px 0; }
 
@@ -386,6 +392,10 @@
     <div class="hours">朝食 7:00 – 11:00　／　ランチのご予約 12:00</div>
     <div class="ornament">✦</div>
     <p class="lead">ビュッフェ台を2周。ランチが入る腹八分目をキープして、<br>いちばん満足した人の勝ち。</p>
+    <div class="extra-rules">
+      <span class="eyebrow">追加ルール（お試し）</span>
+      <div id="rule-opts"></div>
+    </div>
     <div class="modes">
       <button data-mode="local" class="on">この端末でみんなで</button>
       <button data-mode="online">それぞれの端末で</button>
@@ -430,6 +440,7 @@
     <div class="room-code" id="room-code">----</div>
     <button id="btn-copy-link">招待リンクをコピー</button>
     <div class="members" id="members"></div>
+    <div class="extra-rules"><span class="eyebrow">追加ルール</span><div id="lobby-rules"></div></div>
     <div id="lobby-host">
       <label class="count" style="display:flex;gap:8px;justify-content:center;align-items:center;font-family:var(--serif)">ご利用人数 <select id="net-count"></select></label>
       <button id="btn-net-start" class="primary big-btn">ビュッフェ会場へ</button>
@@ -534,6 +545,12 @@ const LUNCHES = [
   { id: 'skip',   name: '今日は昼抜き！朝ビュッフェ全振り！', emoji: '🍽️', cap: 12, base: 0, exact: 0, affPts: 9, affText: '終了時の満腹度が11か12', aff: (c, full) => full === 11 || full === 12 },
 ];
 
+// 追加ルール(お試し)。タイトル画面で選ぶ
+const RULE_OPTIONS = [
+  { id: 'eventChoice', label: 'イベントを選べる',
+    desc: '各周回で1着の人は、イベントカード2枚を見て1枚を選んで発動する（もう1枚は使わない。4枚すべてを使う）' },
+];
+
 const PIECE_COLORS = ['#6f7c88', '#24467a', '#b8642e', '#7a4aa0'];   // 銀・紺・銅・紫のトング
 const MAX_FULL = 13;
 const START = 0, GOAL = 7;               // 0=スタート、1〜6=料理マス、7=ゴール
@@ -616,20 +633,22 @@ function newSquare(card) {
 }
 
 // online: それぞれの端末で遊ぶ(この端末がホストとして進行する)
-function newGame(seats, online = false) {
+function newGame(seats, online = false, rules = {}) {
   const n = seats.length;
   const stars = shuffle(DISHES.filter(d => d.star));
   const rest = shuffle(DISHES.filter(d => !d.star));
   G = {
     n, uid: 0, lap: 1, phase: 'lunch', current: null, pending: null,
-    online, gid: Math.random().toString(36).slice(2, 8),
+    online, gid: Math.random().toString(36).slice(2, 8), rules: { ...rules },
+    eventPick: null,   // イベントを選べるルール: { pi, opts: [ev, ev] }
     players: seats.map((s, i) => ({
       i, name: s.name, cpu: s.cpu, color: PIECE_COLORS[i],
       pos: START, tray: Array(6).fill(null), full: 0, sat: 0,
       lunch: null, lunchOpts: [], stay: null, ranks: [],
     })),
     squares: [], deck: rest, discard: [],
-    events: shuffle(EVENTS).slice(0, 2), revealed: [],
+    // 通常は2枚(各周回1枚)。イベントを選べるルールでは4枚(各周回2枚から1枚を選ぶ)
+    events: shuffle(EVENTS).slice(0, rules.eventChoice ? 4 : 2), revealed: [],
     stacks: Array.from({ length: 8 }, () => []),   // 各マスのコマ。配列の末尾が一番上
     round: null, roundNo: 0, acted: new Set(),      // 現在のラウンド(手番順と進み具合)と行動済みのプレイヤー
     turns: [],                                      // 手番の記録(自動テスト用)
@@ -646,6 +665,8 @@ function newGame(seats, online = false) {
   G.players.filter(p => p.cpu).forEach(p => { p.lunch = cpuPickLunch(p); });
 
   log(`ゲーム開始！ スタートプレイヤーは ${G.players[G.startPlayer].name}。`);
+  const on = RULE_OPTIONS.filter(r => G.rules[r.id]);
+  if (on.length) log(`追加ルール：${on.map(r => r.label).join('・')}`, 'ev');
   showScreen('game');
   render();
   if (!online) nextLunchChoice();
@@ -712,6 +733,34 @@ function chooseLunch(pi, k) {
   log(`${p.name} がランチ予定カードを1枚伏せた。`);
   if (G.players.every(q => q.lunch)) { G.phase = 'play'; advance(); }
   else render();
+}
+
+function eventCardHtml(ev) {
+  return `<div class="rsv">EVENT</div><div class="big">${ev.emoji}</div>
+    <div class="t">${esc(ev.name)}</div><p class="sub" style="text-align:left;margin:8px 0 0">${esc(ev.text)}</p>`;
+}
+
+let eventPrompted = null;   // 自動でイベント選択を開いた周回
+function renderEventPick() {
+  const p = G.players[G.eventPick.pi];
+  const head = `<div class="who">${tongSvg(p.color, 18)} ${esc(p.name)} が1着でゴール！</div>`;
+  if (!mine(p) || !G.eventPick.opts) {
+    setAction(`${head}<div class="hint">${esc(p.name)} さんがイベントカードを選んでいます…</div>`);
+    return;
+  }
+  const open = () => {
+    openModal(`<div class="eyebrow" style="text-align:center">EVENT</div>
+      <h2>${esc(p.name)} さま、1着でゴール！</h2>
+      <div class="sub">発動するイベントを1枚選んでください（もう1枚は使いません）。</div>
+      <div class="lunch-opts">${G.eventPick.opts.map((ev, k) => `<div class="lcard" data-event="${k}">${eventCardHtml(ev)}</div>`).join('')}</div>
+      <div class="actions"><button id="btn-hide-modal">ビュッフェ台を見る</button></div>`, 'event');
+    document.querySelectorAll('[data-event]').forEach(el => el.onclick = () => { closeModal(); userAct({ type: 'event', k: +el.dataset.event }); });
+    $('#btn-hide-modal').onclick = closeModal;
+  };
+  setAction(`${head}<div class="moves"><button class="primary" id="btn-event">イベントを選ぶ</button></div>`);
+  $('#btn-event').onclick = open;
+  const key = `${G.gid}-${G.lap}`;
+  if (eventPrompted !== key) { eventPrompted = key; open(); }
 }
 
 let lunchPrompted = null;   // 自動でランチ選択を開いたゲーム(gid)
@@ -854,13 +903,37 @@ function arriveGoal(p) {
   G.finish.push(p.i);
   p.ranks[G.lap - 1] = rank;
   log(`${p.name} が ${G.lap}周目を ${rank}着でゴール。`);
-  if (rank === 1) {
-    const ev = G.events[G.lap - 1];
-    G.revealed.push(ev);
-    log(`イベント「${ev.name}」発動：${ev.text}`, 'ev');
-    applyEvent(ev);
-    toast(`${ev.emoji} <b>${ev.name}</b><br>${ev.text}`);
+  if (rank === 1 && G.rules.eventChoice) {
+    // 2枚を見て1枚を選ぶまで止める(選んだら finishArrive へ)
+    G.eventPick = { pi: p.i, opts: G.events.slice((G.lap - 1) * 2, G.lap * 2) };
+    G.phase = 'event';
+    render();
+    if (p.cpu) setTimeout(() => chooseEvent(p.i, cpuPickEvent(p)), CPU_DELAY);
+    return;
   }
+  if (rank === 1) fireEvent(G.events[G.lap - 1]);
+  finishArrive(p, rank);
+}
+
+function fireEvent(ev) {
+  G.revealed.push(ev);
+  log(`イベント「${ev.name}」発動：${ev.text}`, 'ev');
+  applyEvent(ev);
+  toast(`${ev.emoji} <b>${ev.name}</b><br>${ev.text}`);
+}
+
+function chooseEvent(pi, k) {
+  if (G.phase !== 'event' || !G.eventPick || G.eventPick.pi !== pi || !(k === 0 || k === 1)) return;
+  const p = G.players[pi];
+  const ev = G.eventPick.opts[k];
+  log(`${p.name} がイベントカード2枚から「${ev.name}」を選んだ。`);
+  G.eventPick = null;
+  G.phase = 'play';
+  fireEvent(ev);
+  finishArrive(p, 1);
+}
+
+function finishArrive(p, rank) {
   const relief = rank === 1 ? 2 : rank === 2 ? 1 : 0;
   if (relief) {
     const before = p.full;
@@ -871,33 +944,45 @@ function arriveGoal(p) {
   else advance();
 }
 
-// 1着の人がゴールした直後(G.finish に入った後)に呼ばれる
-function applyEvent(ev) {
+// イベントの効果を計算する(1着の人がゴールした直後 = G.finish に入った後の状態で)
+// → { sat: [人ごとの満足度の増減], full: [満腹度の増減], bus: 大皿を下げるか, msg }
+function eventEffect(ev) {
   const ps = G.players;
+  const sat = ps.map(() => 0), full = ps.map(() => 0);
   const notYet = ps.filter(q => !G.finish.includes(q.i));
   const names = qs => qs.map(q => q.name).join('・');
-  if (ev.id === 'bus' && notYet.length) {
-    G.squares.forEach(sq => { if (sq.card && sq.tokens > 1) sq.tokens--; });
-  }
+  let bus = false, msg = '';
+  if (ev.id === 'bus') bus = notYet.length > 0;
   if (ev.id === 'chef') {
-    notYet.forEach(q => { q.sat += 2; });
-    if (notYet.length) log(`${names(notYet)} が満足度＋2。`);
+    notYet.forEach(q => { sat[q.i] += 2; });
+    if (notYet.length) msg = `${names(notYet)} が満足度＋2。`;
   }
   if (ev.id === 'oolong') {
     const top = Math.max(...ps.map(q => q.full));
     const hit = ps.filter(q => q.full === top);
-    hit.forEach(q => { q.full = clamp(q.full - 2, 0, MAX_FULL); });
-    log(`${names(hit)} の満腹度−2。`);
+    hit.forEach(q => { full[q.i] -= 2; });
+    msg = `${names(hit)} の満腹度−2。`;
   }
   if (ev.id === 'serve') {
     const lowSat = Math.min(...ps.map(q => q.sat));
     const lowFull = Math.min(...ps.map(q => q.full));
     const a = ps.filter(q => q.sat === lowSat), b = ps.filter(q => q.full === lowFull);
-    a.forEach(q => { q.sat += 3; });
-    b.forEach(q => { q.full = clamp(q.full + 1, 0, MAX_FULL); });
-    log(`${names(a)} が満足度＋3、${names(b)} が満腹度＋1。`);
+    a.forEach(q => { sat[q.i] += 3; });
+    b.forEach(q => { full[q.i] += 1; });
+    msg = `${names(a)} が満足度＋3、${names(b)} が満腹度＋1。`;
   }
+  return { sat, full, bus, msg };
 }
+
+function applyEvent(ev) {
+  const e = eventEffect(ev);
+  if (e.bus) G.squares.forEach(sq => { if (sq.card && sq.tokens > 1) sq.tokens--; });
+  G.players.forEach(q => { q.sat += e.sat[q.i]; q.full = clamp(q.full + e.full[q.i], 0, MAX_FULL); });
+  if (e.msg) log(e.msg);
+}
+
+// 伏せたイベントの残り枚数
+const eventsLeft = () => (G.rules.eventChoice ? 2 : 1) * (2 - G.revealed.length);
 
 function endLap() {
   if (G.lap === 2) { endGame(); return; }
@@ -1051,6 +1136,20 @@ function moveValue(p, m) {
   return v - m.k * 0.15 + Math.random() * 0.6;
 }
 
+// イベントを選ぶ: 自分の得 − ほかの人の得(平均)。満腹度は自分のランチ予定に照らして評価
+function cpuPickEvent(p) {
+  const val = ev => {
+    const e = eventEffect(ev);
+    const others = G.players.filter(q => q.i !== p.i);
+    const avg = others.reduce((a, q) => a + e.sat[q.i], 0) / others.length;
+    let v = e.sat[p.i] - avg - fullCost(p, e.full[p.i]);
+    if (e.bus) v += 0.5;   // まだゴールしていない人の取り分が減る
+    return v + Math.random() * 0.3;
+  };
+  const [a, b] = G.eventPick.opts;
+  return val(a) >= val(b) ? 0 : 1;
+}
+
 // 0マス移動でいま取ると「おかわりの2個目」になるか
 const againBonusNext = (p, sq) => !!p.stay && p.stay.uid === sq.uid && p.stay.count === 1;
 
@@ -1110,7 +1209,7 @@ function clockSvg(min) {
 }
 
 function renderStatus() {
-  const left = G.events.length - G.revealed.length;
+  const left = eventsLeft();
   const min = gameMinutes();
   const hh = Math.floor(min / 60), mm = String(min % 60).padStart(2, '0');
   const toLunch = 12 * 60 - min;
@@ -1173,7 +1272,7 @@ function renderBoard() {
       inner = `<div class="station"><div class="title">トレイ置き場</div><div class="sub">スタート</div>
         <div class="deck"><i></i><i></i><i></i><b>${G.deck.length}</b></div><div class="sub">料理の山札</div></div>`;
     } else if (pos === GOAL) {
-      const left = G.events.length - G.revealed.length;
+      const left = eventsLeft();
       inner = `<div class="station"><div class="title">お席へ</div><div class="sub">ゴール</div>
         <div class="evcard ${left ? '' : 'none'}">${left ? 'EVENT' : 'なし'}</div>
         <div class="sub">1着 満腹−2<br>2着 満腹−1</div></div>`;
@@ -1193,6 +1292,7 @@ function renderAction() {
     else setAction(`<div class="who">ランチのご予約を確認中…</div>`);
     return;
   }
+  if (G.phase === 'event') { renderEventPick(); return; }
   if (G.phase === 'end') {
     setAction(`<div class="who">🕛 12:00 — 勝者：${G.result.winners.map(i => esc(G.players[i].name)).join('・')}</div>
       <div class="moves"><button id="btn-result">結果を見る</button></div>`);
@@ -1313,13 +1413,14 @@ let ME = null;    // オンライン対戦での自分の席
 // 操作の入口。オンラインのゲストはホストへ送り、それ以外はこの端末で処理する
 function userAct(msg) {
   if (G.online && NET && NET.role === 'guest') { NET.hostConn.send({ type: 'act', act: msg }); return; }
-  const pi = G.online ? ME : msg.type === 'place' ? (G.pending && G.pending.pi) : G.current;
+  const pi = G.online ? ME : msg.type === 'place' ? (G.pending && G.pending.pi) : msg.type === 'event' ? G.eventPick.pi : G.current;
   hostAct(pi, msg);
 }
 function hostAct(pi, msg) {
   if (msg.type === 'move') doMove(pi, +msg.k);
   else if (msg.type === 'place') place(pi, +msg.cell);
   else if (msg.type === 'lunch') chooseLunch(pi, +msg.k);
+  else if (msg.type === 'event') chooseEvent(pi, +msg.k);
 }
 
 function genCode() {
@@ -1368,7 +1469,7 @@ function hostRoom(attempt = 0) {
   const peer = new Peer(ROOM_PREFIX + code);
   peer.on('open', () => {
     NET = { role: 'host', peer, code, conns: [], members: [{ id: 'host', name: netName() }],
-            inGame: false, seatPeer: [], count: 4, seen: {} };
+            inGame: false, seatPeer: [], count: 4, seen: {}, rules: readRules($('#rule-opts')) };
     // タブを閉じた・スマホが眠ったなどで close が届かないことがあるので、無応答が続いたら切断扱いにする
     NET.hb = setInterval(() => NET.conns.slice().forEach(c => {
       if (Date.now() - (NET.seen[c.peer] || 0) > SILENT_LIMIT) { try { c.close(); } catch (_) {} onGuestLeave(c); }
@@ -1444,6 +1545,7 @@ function onGuestLeave(conn) {
   // CPU として続きを進める
   if (G.phase === 'lunch' && !p.lunch) { chooseLunch(pi, p.lunchOpts.indexOf(cpuPickLunch(p))); return; }
   if (G.phase === 'play' && G.current === pi) setTimeout(() => cpuTurn(p), CPU_DELAY);
+  if (G.phase === 'event' && G.eventPick.pi === pi) setTimeout(() => chooseEvent(pi, cpuPickEvent(p)), CPU_DELAY);
   if (G.phase === 'place' && G.pending.pi === pi) {
     const sq = G.squares[G.pending.s];
     setTimeout(() => place(pi, cpuPickCell(p, sq.card, G.pending.again && againBonusNext(p, sq))), CPU_DELAY / 2);
@@ -1456,7 +1558,9 @@ function showLobby() {
   const host = NET.role === 'host';
   const list = host ? NET.members.map(m => m.name) : NET.members;
   const count = host ? NET.count : NET.count || list.length;
-  if (host) NET.conns.forEach(c => c.open && c.send({ type: 'lobby', members: list, count, code: NET.code }));
+  if (host) NET.conns.forEach(c => c.open && c.send({ type: 'lobby', members: list, count, code: NET.code, rules: NET.rules }));
+  $('#lobby-rules').innerHTML = ruleOptsHtml(NET.rules || {}, !host);
+  if (host) $('#lobby-rules').onchange = () => { NET.rules = readRules($('#lobby-rules')); showLobby(); };
   $('#room-code').textContent = NET.code;
   const cpus = Math.max(0, count - list.length);
   $('#members').innerHTML = list.map((name, i) => `<div class="member">${tongSvg(PIECE_COLORS[i], 18)}<span>${esc(name)}</span>
@@ -1478,7 +1582,7 @@ function startOnline() {
   NET.seatPeer = seats.map((_, i) => NET.members[i] ? NET.members[i].id : null);
   NET.inGame = true;
   ME = 0;
-  newGame(seats, true);
+  newGame(seats, true, NET.rules);
 }
 
 function backToLobby() {
@@ -1497,7 +1601,9 @@ function stateFor(seat) {
     n: G.n, uid: G.uid, lap: G.lap, phase: G.phase, current: G.current, pending: G.pending,
     online: true, gid: G.gid, startPlayer: G.startPlayer,
     squares: G.squares, stacks: G.stacks, round: G.round, roundNo: G.roundNo, acted: [...G.acted],
-    finish: G.finish, log: G.log.slice(0, 120), revealed: G.revealed,
+    finish: G.finish, log: G.log.slice(0, 120), revealed: G.revealed, rules: G.rules,
+    // 選ぶ前のイベント2枚は、選ぶ本人にだけ見せる
+    eventPick: G.eventPick && { pi: G.eventPick.pi, opts: G.eventPick.pi === seat ? G.eventPick.opts : null },
     deckCount: G.deck.length, eventsCount: G.events.length,
     players: G.players.map(p => ({
       ...p,
@@ -1552,7 +1658,7 @@ function onHostData(d) {
   if (d.type === 'error') { leaveNet(d.msg); return; }
   if (d.type === 'toast') { toast(d.html); return; }
   if (d.type === 'lobby') {
-    NET.members = d.members; NET.count = d.count;
+    NET.members = d.members; NET.count = d.count; NET.rules = d.rules || {};
     NET.myName = d.members.includes(NET.myName) ? NET.myName : d.members[d.members.length - 1];
     if (G) { G = null; closeModal(); }
     showLobby();
@@ -1573,7 +1679,7 @@ function applySync(st, seat) {
         result: st.result && { winners: st.result.winners, res: st.result.res.map(r => ({ p: players[r.pi], s: r.s })) } };
   ME = seat;
   if (!prev || prev.gid !== G.gid) showScreen('game');
-  if (modalKind === 'lunch' && G.phase !== 'lunch') closeModal();
+  if ((modalKind === 'lunch' && G.phase !== 'lunch') || (modalKind === 'event' && G.phase !== 'event')) closeModal();
   render();
   renderLog();
   if (G.phase === 'end' && (!prev || prev.gid !== G.gid || prev.phase !== 'end')) showResult();
@@ -1605,6 +1711,25 @@ function renderSeats() {
 }
 $('#sel-count').onchange = renderSeats;
 renderSeats();
+// 追加ルールの選択欄。readonly なら文字だけ(ゲスト用)
+function ruleOptsHtml(rules, readonly) {
+  if (readonly) {
+    const on = RULE_OPTIONS.filter(r => rules[r.id]);
+    return on.length ? on.map(r => `<div class="ropt"><span>✔</span><b>${esc(r.label)}</b><span class="sub">${esc(r.desc)}</span></div>`).join('')
+      : '<div class="sub" style="text-align:center">なし（基本ルール）</div>';
+  }
+  return RULE_OPTIONS.map(r => `<label class="ropt"><input type="checkbox" data-rule="${r.id}" ${rules[r.id] ? 'checked' : ''}>
+    <b>${esc(r.label)}</b><span class="sub">${esc(r.desc)}</span></label>`).join('');
+}
+const readRules = root => Object.fromEntries([...root.querySelectorAll('[data-rule]')].map(el => [el.dataset.rule, el.checked]));
+function loadRules() {
+  try { return JSON.parse(localStorage.getItem('buffet-rules')) || {}; } catch (_) { return {}; }
+}
+$('#rule-opts').innerHTML = ruleOptsHtml(loadRules(), false);
+$('#rule-opts').onchange = () => {
+  try { localStorage.setItem('buffet-rules', JSON.stringify(readRules($('#rule-opts')))); } catch (_) {}
+};
+
 function setMode(mode) {
   document.querySelectorAll('.modes button').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
   $('#mode-local').classList.toggle('hidden', mode !== 'local');
@@ -1635,7 +1760,7 @@ $('#btn-start').onclick = () => {
     name: el.querySelector('input').value.trim() || `P${i + 1}`,
     cpu: el.querySelector('select').value === 'cpu',
   }));
-  newGame(seats);
+  newGame(seats, false, readRules($('#rule-opts')));
 };
 </script>
 </body>

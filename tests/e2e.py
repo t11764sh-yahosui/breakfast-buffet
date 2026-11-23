@@ -26,8 +26,9 @@ def check(cond, msg):
     print(f'  ✓ {msg}', flush=True)
 
 
-def start(page, url, n, humans):
+def start(page, url, n, humans, event_choice=False):
     page.goto(url)
+    page.set_checked('#rule-opts [data-rule="eventChoice"]', event_choice)   # 前回の選択が残るので毎回指定
     page.select_option('#sel-count', str(n))
     seats = page.locator('.seat')
     for i in range(n):
@@ -39,9 +40,12 @@ def check_end(page, n):
     page.wait_for_function("window.__state() && window.__state().phase === 'end'", timeout=60_000)
     g = page.evaluate('''() => { const G = window.__state(); return {
         players: G.players.map(p => ({ tray: p.tray.filter(Boolean).length, full: p.full, ranks: p.ranks, pos: p.pos })),
-        winners: G.result.winners, totals: G.result.res.map(r => r.s.total) }; }''')
+        winners: G.result.winners, totals: G.result.res.map(r => r.s.total),
+        revealed: G.revealed.length, events: G.events.length, choice: !!G.rules.eventChoice }; }''')
     check(all(p['pos'] == 7 and len(p['ranks']) == 2 for p in g['players']), f'{n}人: 全員が2周ゴール')
     check(all(0 <= p['full'] <= 13 and p['tray'] <= 6 for p in g['players']), f'{n}人: 満腹度とトレイが範囲内')
+    check(g['revealed'] == 2 and g['events'] == (4 if g['choice'] else 2),
+          f'{n}人: イベントが各周回1回ずつ発動' + ('(2枚から選ぶルール)' if g['choice'] else ''))
     check(len(g['winners']) >= 1 and page.is_visible('table.res'), f'{n}人: 結果表を表示 合計={g["totals"]}')
     # ラウンド: ゴール前の全員がちょうど1回ずつ手番を行い、ゴールした人はその周回で手番を行わない
     r = page.evaluate('''() => { const G = window.__state(); const by = {};
@@ -61,19 +65,24 @@ def no_hscroll(page, where):
     check(w[0] <= w[1], f'{where}: 横スクロールなし ({w[0]}px / {w[1]}px)')
 
 
-def play_human(page, url, tag, phone=False):
-    start(page, url, 4, 1)
+def play_human(page, url, tag, phone=False, event_choice=False):
+    start(page, url, 4, 1, event_choice)
     if phone:
         no_hscroll(page, 'ランチ選択')
     page.locator('[data-lunch]').first.click()
     page.screenshot(path=os.path.join(OUT, f'{tag}-1-board.png'), full_page=True)
     shot_place = False
+    picked_event = False
     for _ in range(400):
         st = page.evaluate("() => { const G = window.__state(); return { phase: G.phase, cur: G.current }; }")
         if st['phase'] == 'end':
             break
         if st['cur'] != 0:
             page.wait_for_timeout(20)
+            continue
+        if st['phase'] == 'event':
+            page.locator('[data-event]').first.click()
+            picked_event = True
             continue
         if st['phase'] == 'place':
             if not shot_place:
@@ -91,6 +100,8 @@ def play_human(page, url, tag, phone=False):
         else:
             page.wait_for_timeout(20)
     check_end(page, 4)
+    if event_choice:
+        check(picked_event or page.evaluate("G.players[0].ranks.every(r => r !== 1)"), 'イベントを画面で選べる(1着のとき)')
     if phone:
         no_hscroll(page, '結果画面')
     page.screenshot(path=os.path.join(OUT, f'{tag}-3-result.png'), full_page=True)
@@ -122,6 +133,9 @@ def online_room(br, url):
     host.wait_for_function("document.querySelectorAll('#members .member:not(.cpu)').length === 2", timeout=NET_TIMEOUT)
     check(True, f'招待コード {code} でゲストが入室')
     no_hscroll(guest, 'スマホの待機室')
+    host.set_checked('#lobby-rules [data-rule="eventChoice"]', True)
+    guest.wait_for_function("document.querySelector('#lobby-rules').textContent.includes('イベントを選べる')", timeout=NET_TIMEOUT)
+    check(True, '追加ルールがゲストの待機室にも表示される')
     host.select_option('#net-count', '4')
     host.click('#btn-net-start')
     for pg in (host, guest):
@@ -132,10 +146,13 @@ def online_room(br, url):
 
 def online_step(pg):
     """自分の手番なら1手進める。進めたら True"""
-    st = pg.evaluate("() => G ? { phase: G.phase, cur: G.current, me: ME, pend: G.pending && G.pending.pi } : null")
+    st = pg.evaluate("() => G ? { phase: G.phase, cur: G.current, me: ME, pend: G.pending && G.pending.pi, ev: G.eventPick && G.eventPick.pi } : null")
     if not st:
         return False
     try:   # 同期で画面が描き直されてボタンが消えることがあるので、押せなければ次の機会に回す
+        if st['phase'] == 'event' and st['ev'] == st['me']:
+            pg.locator('[data-event]').first.click(timeout=2000)
+            return True
         if st['phase'] == 'place' and st['pend'] == st['me']:
             pg.locator('[data-cell]:visible').first.click(timeout=2000)
             return True
@@ -226,10 +243,15 @@ def run(headed):
             for _ in range(5):
                 start(page, url, n, 0)
                 check_end(page, n)
+        print('▶ CPU だけの対戦(追加ルール:イベントを選べる)', flush=True)
+        for n in (2, 3, 4):
+            for _ in range(2):
+                start(page, url, n, 0, event_choice=True)
+                check_end(page, n)
         check(not errors, 'ページエラーなし ' + '; '.join(errors[:3]))
 
         print('▶ 人間1人 + CPU3人を画面操作で遊ぶ(PC)', flush=True)
-        play_human(page, url, 'pc')
+        play_human(page, url, 'pc', event_choice=True)
         check(not errors, 'ページエラーなし ' + '; '.join(errors[:3]))
 
         print('▶ 同じくスマホ幅(390×844、タッチ)で遊ぶ', flush=True)
