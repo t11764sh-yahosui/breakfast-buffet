@@ -7,6 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍳</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" defer></script>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -78,6 +79,21 @@
   .seat input:focus { outline: none; border-bottom-color: var(--brass); }
   .seat select, #sel-count { font: inherit; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--linen); }
   #btn-start { font-size: 17px; padding: 10px 28px; border-radius: 999px; margin-top: 6px; font-family: var(--serif); letter-spacing: .08em; }
+  .modes { display: flex; gap: 6px; justify-content: center; margin: 4px 0 6px; }
+  .modes button { border-radius: 999px; font-size: 13px; }
+  .modes button.on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+  .net-form { max-width: 360px; margin: 14px auto; display: grid; gap: 10px; }
+  .net-form label { display: flex; align-items: center; gap: 8px; font-family: var(--serif); }
+  .net-form input { flex: 1; min-width: 0; font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--linen); }
+  .net-form .joinrow { display: flex; gap: 8px; }
+  .net-form #net-code { text-transform: uppercase; letter-spacing: .3em; text-align: center; font-family: var(--serif); font-size: 18px; }
+  .net-form .or { font-size: 12px; color: var(--muted); }
+  .big-btn { font-size: 17px; padding: 10px 28px; border-radius: 999px; font-family: var(--serif); letter-spacing: .08em; }
+  .room-code { font-family: var(--serif); font-size: 40px; font-weight: 800; letter-spacing: .3em; margin: 4px 0; }
+  .members { text-align: left; max-width: 360px; margin: 12px auto; }
+  .member { display: flex; gap: 8px; align-items: center; padding: 6px 2px; border-bottom: 1px dotted var(--line); }
+  .member .tag { margin-left: auto; font-size: 11px; color: var(--muted); }
+  .member.cpu { color: var(--muted); }
   .rules { font-size: 13px; color: var(--muted); text-align: left; margin: 18px 0 0; padding-left: 1.2em; }
   .rules li { margin: 3px 0; }
 
@@ -370,6 +386,11 @@
     <div class="hours">朝食 7:00 – 11:00　／　ランチのご予約 12:00</div>
     <div class="ornament">✦</div>
     <p class="lead">ビュッフェ台を2周。ランチが入る腹八分目をキープして、<br>いちばん満足した人の勝ち。</p>
+    <div class="modes">
+      <button data-mode="local" class="on">この端末でみんなで</button>
+      <button data-mode="online">それぞれの端末で</button>
+    </div>
+    <div id="mode-local">
     <div class="form">
       <label class="count">ご利用人数
         <select id="sel-count">
@@ -381,13 +402,40 @@
       <div id="seats"></div>
     </div>
     <button id="btn-start" class="primary">ビュッフェ会場へ</button>
+    </div>
+    <div id="mode-online" class="hidden">
+      <div class="net-form">
+        <label>お名前 <input id="net-name" maxlength="8" placeholder="あなた" autocomplete="off"></label>
+        <button id="btn-host" class="primary big-btn">部屋をつくる</button>
+        <div class="or">または、招待コードで入室</div>
+        <div class="joinrow"><input id="net-code" maxlength="4" placeholder="ABCD" autocomplete="off" autocapitalize="characters" aria-label="招待コード"><button id="btn-join">入室する</button></div>
+      </div>
+      <p class="sub">部屋をつくった人の端末がゲームを進めます。足りない席は CPU が入ります。</p>
+    </div>
     <ul class="rules">
-      <li>一番後ろ（同じマスなら一番上）のトングの人が手番。0〜4マス進む。</li>
-      <li>誰もいない料理に止まったら1個取ってトレイへ。先客がいたら相乗り（取れないが次の手番が早い）。</li>
-      <li>同じ料理はその場で「おかわり（0マス）」して2個まで取れる。</li>
+      <li>ラウンドごとに、一番後ろ（同じマスなら一番上）のトングの人から全員1回ずつ手番。0〜4マス進む。</li>
+      <li>このラウンドでまだ誰も止まっていない料理なら1個取ってトレイへ。先に止まった人がいたら相乗り（取れないが次のラウンドで先に動ける）。</li>
+      <li>料理が残っていれば、その場で「おかわり（0マス）」を何度でもできる。料理のないマスには進めない。</li>
       <li>満腹度がランチ予定カードの上限以下ならランチ成功。13 に達するとバースト（−5点）。</li>
       <li>トレイに6色そろえば＋6、上段か下段が同色3つなら1列につき＋3。</li>
     </ul>
+  </div>
+</div>
+
+<!-- ================= 待機室(オンライン) ================= -->
+<div id="lobby" class="wrap hidden">
+  <div class="cover">
+    <div class="eyebrow">WAITING ROOM</div>
+    <div class="sub" style="margin-top:8px">招待コード</div>
+    <div class="room-code" id="room-code">----</div>
+    <button id="btn-copy-link">招待リンクをコピー</button>
+    <div class="members" id="members"></div>
+    <div id="lobby-host">
+      <label class="count" style="display:flex;gap:8px;justify-content:center;align-items:center;font-family:var(--serif)">ご利用人数 <select id="net-count"></select></label>
+      <button id="btn-net-start" class="primary big-btn">ビュッフェ会場へ</button>
+    </div>
+    <p class="sub hidden" id="lobby-guest">部屋をつくった人がゲームを始めるのを待っています…</p>
+    <p><button id="btn-leave">退出する</button></p>
   </div>
 </div>
 
@@ -567,12 +615,14 @@ function newSquare(card) {
   return { card, uid: ++G.uid, tokens: card ? supplyCount(card, G.n) : 0 };
 }
 
-function newGame(seats) {
+// online: それぞれの端末で遊ぶ(この端末がホストとして進行する)
+function newGame(seats, online = false) {
   const n = seats.length;
   const stars = shuffle(DISHES.filter(d => d.star));
   const rest = shuffle(DISHES.filter(d => !d.star));
   G = {
     n, uid: 0, lap: 1, phase: 'lunch', current: null, pending: null,
+    online, gid: Math.random().toString(36).slice(2, 8),
     players: seats.map((s, i) => ({
       i, name: s.name, cpu: s.cpu, color: PIECE_COLORS[i],
       pos: START, tray: Array(6).fill(null), full: 0, sat: 0,
@@ -596,10 +646,13 @@ function newGame(seats) {
   G.players.filter(p => p.cpu).forEach(p => { p.lunch = cpuPickLunch(p); });
 
   log(`ゲーム開始！ スタートプレイヤーは ${G.players[G.startPlayer].name}。`);
-  $('#setup').classList.add('hidden');
-  $('#game').classList.remove('hidden');
+  showScreen('game');
   render();
-  nextLunchChoice();
+  if (!online) nextLunchChoice();
+}
+
+function showScreen(id) {
+  ['setup', 'lobby', 'game'].forEach(k => $('#' + k).classList.toggle('hidden', k !== id));
 }
 
 function log(msg, cls) {
@@ -608,34 +661,25 @@ function log(msg, cls) {
 }
 
 const humans = () => G.players.filter(p => !p.cpu);
-const canSeeLunch = p => !p.cpu && (humans().length === 1 || (G.peek && G.current === p.i));
+// この端末で操作する席か(オンラインでは自分の席だけ)
+const mine = p => G.online ? p.i === ME : !p.cpu;
+const canSeeLunch = p => G.online ? p.i === ME
+  : !p.cpu && (humans().length === 1 || (G.peek && G.current === p.i));
 
 // ---------- ランチ予定カードの選択 ----------
 function nextLunchChoice() {
   const p = G.players.find(q => !q.lunch);
   if (!p) { closeModal(); G.phase = 'play'; advance(); return; }
-  const showChoice = () => {
-    openModal(`
-      <div class="eyebrow" style="text-align:center">LUNCH RESERVATION</div>
-      <h2>${esc(p.name)} さまのランチのご予約</h2>
-      <div class="sub">ビュッフェ台の定番料理を見てから、1枚を選んで伏せます（もう1枚は箱へ）。</div>
-      <div class="lunch-opts">${p.lunchOpts.map((l, k) => `
-        <div class="lcard" data-lunch="${k}">${lunchCardHtml(l)}</div>`).join('')}
-      </div>
-      <div class="actions"><button id="btn-hide-modal">ビュッフェ台を見る</button></div>`);
-    document.querySelectorAll('[data-lunch]').forEach(el => el.onclick = () => {
-      p.lunch = p.lunchOpts[+el.dataset.lunch];
-      log(`${p.name} がランチ予定カードを1枚伏せた。`);
-      render();
-      nextLunchChoice();
-    });
-    $('#btn-hide-modal').onclick = () => {
-      closeModal();
-      setAction(`<div class="who">${esc(p.name)} さんのランチ予定カード選択中</div>
-        <div class="moves"><button class="primary" id="btn-reopen">カードを選ぶ</button></div>`);
-      $('#btn-reopen').onclick = showChoice;
-    };
-  };
+  const showChoice = () => lunchModal(p, k => {
+    p.lunch = p.lunchOpts[k];
+    log(`${p.name} がランチ予定カードを1枚伏せた。`);
+    render();
+    nextLunchChoice();
+  }, () => {
+    setAction(`<div class="who">${esc(p.name)} さんのランチ予定カード選択中</div>
+      <div class="moves"><button class="primary" id="btn-reopen">カードを選ぶ</button></div>`);
+    $('#btn-reopen').onclick = showChoice;
+  });
   if (humans().length > 1) {
     openModal(`<h2>${esc(p.name)} さまへ</h2>
       <p class="sub">ランチのご予約を選びます。ほかの人には見えないようにしてください。</p>
@@ -644,6 +688,41 @@ function nextLunchChoice() {
   } else {
     showChoice();
   }
+}
+
+let modalKind = null;   // いま開いているモーダルの種類('lunch' / 'result' など)
+function lunchModal(p, onPick, onHide) {
+  openModal(`
+    <div class="eyebrow" style="text-align:center">LUNCH RESERVATION</div>
+    <h2>${esc(p.name)} さまのランチのご予約</h2>
+    <div class="sub">ビュッフェ台の定番料理を見てから、1枚を選んで伏せます（もう1枚は箱へ）。</div>
+    <div class="lunch-opts">${p.lunchOpts.map((l, k) => `
+      <div class="lcard" data-lunch="${k}">${lunchCardHtml(l)}</div>`).join('')}
+    </div>
+    <div class="actions"><button id="btn-hide-modal">ビュッフェ台を見る</button></div>`, 'lunch');
+  document.querySelectorAll('[data-lunch]').forEach(el => el.onclick = () => { closeModal(); onPick(+el.dataset.lunch); });
+  $('#btn-hide-modal').onclick = () => { closeModal(); onHide(); };
+}
+
+// オンライン: 全員が同時に自分の端末で選ぶ(ホストが受け付ける)
+function chooseLunch(pi, k) {
+  const p = G.players[pi];
+  if (G.phase !== 'lunch' || !p || p.lunch || !(k === 0 || k === 1)) return;
+  p.lunch = p.lunchOpts[k];
+  log(`${p.name} がランチ予定カードを1枚伏せた。`);
+  if (G.players.every(q => q.lunch)) { G.phase = 'play'; advance(); }
+  else render();
+}
+
+let lunchPrompted = null;   // 自動でランチ選択を開いたゲーム(gid)
+function renderOnlineLunch() {
+  const me = G.players[ME];
+  if (me.lunch) { setAction(`<div class="who">ほかの人がランチのご予約を選んでいます…</div>`); return; }
+  const open = () => lunchModal(me, k => userAct({ type: 'lunch', k }), () => {});
+  setAction(`<div class="who">ランチのご予約を選んでください</div>
+    <div class="moves"><button class="primary" id="btn-reopen">カードを選ぶ</button></div>`);
+  $('#btn-reopen').onclick = open;
+  if (lunchPrompted !== G.gid) { lunchPrompted = G.gid; open(); }
 }
 
 function lunchCardHtml(l) {
@@ -746,7 +825,7 @@ function doMove(pi, k) {
 function place(pi, cell) {
   if (G.phase !== 'place' || G.pending.pi !== pi) return;
   const p = G.players[pi];
-  if (p.tray[cell]) return;
+  if (!Number.isInteger(cell) || cell < 0 || cell > 5 || p.tray[cell]) return;
   const s = G.pending.s, sq = G.squares[s], c = sq.card;
   const again = G.pending.again && !!p.stay && p.stay.uid === sq.uid && p.stay.count === 1;   // おかわりで取った2個目
   const bonus = placementBonus(p.tray, cell, c, again);
@@ -895,8 +974,13 @@ function showResult() {
       <tr class="total"><td>合計</td>${cols.map(r => `<td class="${G.result.winners.includes(r.p.i) ? 'win' : ''}">${r.s.total}</td>`).join('')}</tr>
     </table>
     </div>
-    <div class="actions"><button class="primary" id="btn-again">もう一度遊ぶ</button> <button id="btn-close">盤面を見る</button></div>`);
-  $('#btn-again').onclick = () => { closeModal(); $('#game').classList.add('hidden'); $('#setup').classList.remove('hidden'); };
+    <div class="actions"><button class="primary" id="btn-again">もう一度遊ぶ</button> <button id="btn-close">盤面を見る</button></div>`, 'result');
+  $('#btn-again').onclick = () => {
+    closeModal();
+    if (!G.online) showScreen('setup');
+    else if (NET && NET.role === 'host') backToLobby();
+  };
+  if (G.online && !(NET && NET.role === 'host')) $('#btn-again').outerHTML = '<span class="sub">次のゲームは部屋をつくった人が始めます</span>';
   $('#btn-close').onclick = closeModal;
 }
 
@@ -991,6 +1075,7 @@ function render() {
   renderBoard();
   renderAction();
   renderPlayers();
+  if (G.online && NET && NET.role === 'host') syncAll();
 }
 
 // トング型コマのアイコン
@@ -1078,7 +1163,7 @@ function dishHtml(sq) {
 
 function renderBoard() {
   const p = G.current != null ? G.players[G.current] : null;
-  const human = p && !p.cpu && G.phase === 'play';
+  const human = p && mine(p) && G.phase === 'play';
   const targets = new Map();
   if (human) legalMoves(p).forEach(m => { if (!targets.has(m.to)) targets.set(m.to, m.k); });
   const slots = [];
@@ -1097,13 +1182,17 @@ function renderBoard() {
     slots.push(`<div class="slot ${t ? 'target' : ''}" ${t ? `data-move="${targets.get(pos)}"` : ''}>${inner}${stackHtml(pos)}</div>`);
   }
   $('#board').innerHTML = slots.join('');
-  document.querySelectorAll('[data-move]').forEach(el => el.onclick = () => doMove(G.current, +el.dataset.move));
+  document.querySelectorAll('[data-move]').forEach(el => el.onclick = () => userAct({ type: 'move', k: +el.dataset.move }));
 }
 
 function setAction(html) { $('#action').innerHTML = html; }
 
 function renderAction() {
-  if (G.phase === 'lunch') { setAction(`<div class="who">ランチのご予約を確認中…</div>`); return; }
+  if (G.phase === 'lunch') {
+    if (G.online) renderOnlineLunch();
+    else setAction(`<div class="who">ランチのご予約を確認中…</div>`);
+    return;
+  }
   if (G.phase === 'end') {
     setAction(`<div class="who">🕛 12:00 — 勝者：${G.result.winners.map(i => esc(G.players[i].name)).join('・')}</div>
       <div class="moves"><button id="btn-result">結果を見る</button></div>`);
@@ -1114,11 +1203,14 @@ function renderAction() {
   const head = `<div class="who">${tongSvg(p.color, 18)} ${esc(p.name)} の手番${p.cpu ? '<span class="sub">（CPU）</span>' : ''}</div>`;
   if (G.phase === 'place') {
     const c = G.squares[G.pending.s].card;
-    setAction(`${head}<div class="hint">${c.emoji}${esc(c.name)} をトレイのどのお皿に盛る？（${bonusText(c)}）${p.cpu ? '' : '<span class="desk-only">— 光っているお皿をクリック</span>'}</div>
-      ${p.cpu ? '' : `<div class="tray phone-only">${trayCellsHtml(p, c)}</div>`}`);
+    const my = mine(p);
+    setAction(`${head}<div class="hint">${c.emoji}${esc(c.name)} をトレイのどのお皿に盛る？（${bonusText(c)}）${my ? '<span class="desk-only">— 光っているお皿をクリック</span>' : ''}</div>
+      ${my ? `<div class="tray phone-only">${trayCellsHtml(p, c)}</div>` : ''}`);
+    bindCells();
     return;
   }
   if (p.cpu) { setAction(`${head}<div class="hint">料理を見比べています…</div>`); return; }
+  if (!mine(p)) { setAction(`${head}<div class="hint">${esc(p.name)} さんが考えています…</div>`); return; }
   const btns = legalMoves(p).map(m => {
     const info = landingInfo(p, m.k);
     let what;
@@ -1131,7 +1223,7 @@ function renderAction() {
   setAction(`${head}
     <div class="moves">${btns}</div>
     <div class="hint desk-only">ビュッフェ台の光っている場所をクリックしても進めます。</div>`);
-  document.querySelectorAll('#action [data-k]').forEach(el => el.onclick = () => doMove(p.i, +el.dataset.k));
+  document.querySelectorAll('#action [data-k]').forEach(el => el.onclick = () => userAct({ type: 'move', k: +el.dataset.k }));
 }
 
 function bellyHtml(p, cap) {
@@ -1159,7 +1251,7 @@ function trayCellsHtml(p, card) {
 function renderPlayers() {
   const pend = G.phase === 'place' ? G.pending : null;
   $('#players').innerHTML = G.players.map(p => {
-    const picking = pend && pend.pi === p.i && !p.cpu;
+    const picking = pend && pend.pi === p.i && mine(p);
     const card = pend ? G.squares[pend.s].card : null;
     const cells = trayCellsHtml(p, picking ? card : null);
     const see = !!p.lunch && canSeeLunch(p);
@@ -1168,12 +1260,12 @@ function renderPlayers() {
       : see ? `<div class="lunch"><div class="rsv">RESERVATION 12:00</div>
           <div class="nm2">${p.lunch.emoji} ${esc(p.lunch.name)}</div>
           満腹度上限 <b>${p.lunch.cap}</b>・基礎＋${p.lunch.base}${p.lunch.exact ? `・ピタリ＋${p.lunch.exact}` : ''}<br>${p.lunch.exact ? '相性' : 'ボーナス'}：${esc(p.lunch.affText)}なら＋${p.lunch.affPts}</div>`
-      : `<div class="lunch secret"><div class="rsv">RESERVATION 12:00</div>ご予約内容は伏せてあります${!p.cpu && G.current === p.i && G.phase !== 'end' ? ' <button id="btn-peek">こっそり見る</button>' : ''}</div>`;
+      : `<div class="lunch secret"><div class="rsv">RESERVATION 12:00</div>ご予約内容は伏せてあります${!G.online && !p.cpu && G.current === p.i && G.phase !== 'end' ? ' <button id="btn-peek">こっそり見る</button>' : ''}</div>`;
     const rk = p.ranks.map((r, k) => `${k + 1}周目${r}着`).join('・');
     return `<div class="pl ${G.current === p.i && G.phase !== 'end' ? 'active' : ''}">
       <div class="head">
         <div>
-          <div class="nm">${tongSvg(p.color, 18)}<span>${esc(p.name)}</span>${p.cpu ? ' <span class="sub">CPU</span>' : ''}</div>
+          <div class="nm">${tongSvg(p.color, 18)}<span>${esc(p.name)}</span>${p.cpu ? ' <span class="sub">CPU</span>' : ''}${G.online && p.i === ME ? ' <span class="sub">（あなた）</span>' : ''}</div>
           <div class="ranks">${rk || '&nbsp;'}</div>
         </div>
         <div class="pancake"><small>満足度</small><div class="disc">${p.sat}</div></div>
@@ -1183,26 +1275,313 @@ function renderPlayers() {
       ${lunchHtml}
     </div>`;
   }).join('');
-  document.querySelectorAll('[data-cell]').forEach(el => el.onclick = () => place(pend.pi, +el.dataset.cell));
+  bindCells();
   const peek = $('#btn-peek');
   if (peek) peek.onclick = () => { G.peek = true; renderPlayers(); };
+}
+
+function bindCells() {
+  document.querySelectorAll('[data-cell]').forEach(el => el.onclick = () => userAct({ type: 'place', cell: +el.dataset.cell }));
 }
 
 function renderLog() {
   $('#log').innerHTML = G.log.map(l => `<div class="${l.cls || ''}">${esc(l.msg)}</div>`).join('');
 }
 
-function openModal(html) { $('#modal').innerHTML = html; $('#overlay').classList.remove('hidden'); }
-function closeModal() { $('#overlay').classList.add('hidden'); }
+function openModal(html, kind = null) { modalKind = kind; $('#modal').innerHTML = html; $('#overlay').classList.remove('hidden'); }
+function closeModal() { modalKind = null; $('#overlay').classList.add('hidden'); }
 
 let toastTimer = null;
 function toast(html) {
+  if (G && G.online && NET && NET.role === 'host') NET.conns.forEach(c => c.open && c.send({ type: 'toast', html }));
   const t = $('#toast');
   t.innerHTML = html;
   t.classList.remove('hidden');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.add('hidden'), FAST ? 300 : 3500);
 }
+
+// ================================================================
+// それぞれの端末で遊ぶ(PeerJS の P2P 通信。部屋をつくった端末が進行役)
+// ================================================================
+const ROOM_PREFIX = 'breakfast-buffet-v1-';
+const MAX_SEATS = 4;
+const HEARTBEAT = 2000, SILENT_LIMIT = 8000;   // 生存確認の間隔と、無応答で切断とみなすまでの時間(ms)
+let NET = null;   // { role: 'host' | 'guest', peer, code, ... }
+let ME = null;    // オンライン対戦での自分の席
+
+// 操作の入口。オンラインのゲストはホストへ送り、それ以外はこの端末で処理する
+function userAct(msg) {
+  if (G.online && NET && NET.role === 'guest') { NET.hostConn.send({ type: 'act', act: msg }); return; }
+  const pi = G.online ? ME : msg.type === 'place' ? (G.pending && G.pending.pi) : G.current;
+  hostAct(pi, msg);
+}
+function hostAct(pi, msg) {
+  if (msg.type === 'move') doMove(pi, +msg.k);
+  else if (msg.type === 'place') place(pi, +msg.cell);
+  else if (msg.type === 'lunch') chooseLunch(pi, +msg.k);
+}
+
+function genCode() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';   // 紛らわしい I/L/O/0/1 を除く
+  return Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+const inviteUrl = () => location.origin + location.pathname + '?room=' + NET.code;
+const netName = () => ($('#net-name').value.trim() || 'ゲスト').slice(0, 8);
+
+function netError(err) {
+  console.warn('[peer]', err);
+  const msgs = {
+    'network': '通信サーバーにつながりません。ネットワークを確認してください。',
+    'server-error': '通信サーバーで問題が起きました。しばらくして試してください。',
+    'browser-incompatible': 'このブラウザは通信対戦に対応していません。',
+    'peer-unavailable': '部屋が見つかりません。招待コードを確認してください。',
+  };
+  toast(msgs[err.type] || `通信エラー：${esc(err.type || err)}`);
+}
+
+function needPeer() {
+  if (typeof Peer !== 'undefined') return true;
+  toast('通信用の部品を読み込めませんでした。ネットワークを確認して再読み込みしてください。');
+  return false;
+}
+
+function leaveNet(msg) {
+  if (NET) clearInterval(NET.hb);
+  try { if (NET && NET.peer && !NET.peer.destroyed) NET.peer.destroy(); } catch (_) {}
+  NET = null; ME = null;
+  if (G && G.online) G = null;
+  closeModal();
+  showScreen('setup');
+  setMode('online');
+  $('#btn-host').disabled = false;
+  $('#btn-join').disabled = false;
+  if (msg) toast(msg);
+}
+
+// ---------- ホスト ----------
+function hostRoom(attempt = 0) {
+  if (!needPeer()) return;
+  if (attempt >= 5) { toast('部屋をつくれませんでした。時間をおいて試してください。'); $('#btn-host').disabled = false; return; }
+  $('#btn-host').disabled = true;
+  const code = genCode();
+  const peer = new Peer(ROOM_PREFIX + code);
+  peer.on('open', () => {
+    NET = { role: 'host', peer, code, conns: [], members: [{ id: 'host', name: netName() }],
+            inGame: false, seatPeer: [], count: 4, seen: {} };
+    // タブを閉じた・スマホが眠ったなどで close が届かないことがあるので、無応答が続いたら切断扱いにする
+    NET.hb = setInterval(() => NET.conns.slice().forEach(c => {
+      if (Date.now() - (NET.seen[c.peer] || 0) > SILENT_LIMIT) { try { c.close(); } catch (_) {} onGuestLeave(c); }
+      else if (c.open) c.send({ type: 'ping' });
+    }), HEARTBEAT);
+    showLobby();
+  });
+  peer.on('connection', conn => {
+    conn.on('open', () => { if (NET) { NET.seen[conn.peer] = Date.now(); NET.conns.push(conn); } });
+    conn.on('data', d => onGuestData(conn, d));
+    conn.on('close', () => onGuestLeave(conn));
+    conn.on('error', () => onGuestLeave(conn));
+  });
+  peer.on('error', err => {
+    if (err.type === 'unavailable-id' && !NET) { peer.destroy(); hostRoom(attempt + 1); return; }
+    netError(err);
+    if (!NET) $('#btn-host').disabled = false;
+  });
+  peer.on('disconnected', () => { if (!peer.destroyed) peer.reconnect(); });
+}
+
+function uniqueName(name) {
+  const taken = n => NET.members.some(m => m.name === n);
+  let out = name, k = 2;
+  while (taken(out)) out = `${name}${k++}`;
+  return out;
+}
+
+function onGuestData(conn, d) {
+  if (!NET || NET.role !== 'host' || !d) return;
+  NET.seen[conn.peer] = Date.now();
+  if (d.type === 'join') {
+    const name = String(d.name || 'ゲスト').slice(0, 8);
+    if (NET.inGame) {
+      // 接続が切れた人が同じ名前で戻ってきたら席を返す
+      const p = G.players.find(q => q.dropped && q.name === name);
+      if (!p) { conn.send({ type: 'error', msg: 'ゲームの途中なので入室できません。' }); return; }
+      p.cpu = false; p.dropped = false;
+      NET.seatPeer[p.i] = conn.peer;
+      log(`${p.name} が戻ってきた。`);
+      render();
+      return;
+    }
+    if (NET.members.some(m => m.id === conn.peer)) return;
+    if (NET.members.length >= MAX_SEATS) { conn.send({ type: 'error', msg: '満席です（最大4人）。' }); return; }
+    NET.members.push({ id: conn.peer, name: uniqueName(name) });
+    NET.count = Math.max(NET.count, NET.members.length);
+    showLobby();
+    return;
+  }
+  if (d.type === 'act' && NET.inGame) {
+    const pi = NET.seatPeer.indexOf(conn.peer);
+    if (pi >= 0 && d.act) hostAct(pi, d.act);
+  }
+}
+
+function onGuestLeave(conn) {
+  if (!NET || NET.role !== 'host' || !NET.conns.includes(conn)) return;
+  NET.conns = NET.conns.filter(c => c !== conn);
+  if (!NET.inGame) {
+    const before = NET.members.length;
+    NET.members = NET.members.filter(m => m.id !== conn.peer);
+    if (NET.members.length !== before) showLobby();
+    return;
+  }
+  const pi = NET.seatPeer.indexOf(conn.peer);
+  if (pi < 0) return;
+  NET.seatPeer[pi] = null;
+  const p = G.players[pi];
+  if (G.phase === 'end') return;
+  p.cpu = true; p.dropped = true;
+  log(`${p.name} の接続が切れたので、CPU が代わりに遊びます（同じ名前で入り直すと戻れます）。`, 'ev');
+  // CPU として続きを進める
+  if (G.phase === 'lunch' && !p.lunch) { chooseLunch(pi, p.lunchOpts.indexOf(cpuPickLunch(p))); return; }
+  if (G.phase === 'play' && G.current === pi) setTimeout(() => cpuTurn(p), CPU_DELAY);
+  if (G.phase === 'place' && G.pending.pi === pi) {
+    const sq = G.squares[G.pending.s];
+    setTimeout(() => place(pi, cpuPickCell(p, sq.card, G.pending.again && againBonusNext(p, sq))), CPU_DELAY / 2);
+  }
+  render();
+}
+
+function showLobby() {
+  showScreen('lobby');
+  const host = NET.role === 'host';
+  const list = host ? NET.members.map(m => m.name) : NET.members;
+  const count = host ? NET.count : NET.count || list.length;
+  if (host) NET.conns.forEach(c => c.open && c.send({ type: 'lobby', members: list, count, code: NET.code }));
+  $('#room-code').textContent = NET.code;
+  const cpus = Math.max(0, count - list.length);
+  $('#members').innerHTML = list.map((name, i) => `<div class="member">${tongSvg(PIECE_COLORS[i], 18)}<span>${esc(name)}</span>
+      <span class="tag">${i === 0 ? '部屋をつくった人' : ''}${host && i === 0 || !host && name === NET.myName ? '（あなた）' : ''}</span></div>`).join('')
+    + Array.from({ length: cpus }, (_, k) => `<div class="member cpu">${tongSvg(PIECE_COLORS[list.length + k], 18)}<span>${esc(DEFAULT_NAMES[list.length + k])}</span><span class="tag">CPU</span></div>`).join('');
+  $('#lobby-host').classList.toggle('hidden', !host);
+  $('#lobby-guest').classList.toggle('hidden', host);
+  if (host) {
+    const min = Math.max(2, NET.members.length);
+    $('#net-count').innerHTML = [2, 3, 4].filter(n => n >= min).map(n => `<option value="${n}" ${n === NET.count ? 'selected' : ''}>${n}名</option>`).join('');
+  }
+}
+
+function startOnline() {
+  const n = Math.max(NET.count, NET.members.length, 2);
+  const seats = Array.from({ length: n }, (_, i) => NET.members[i]
+    ? { name: NET.members[i].name, cpu: false }
+    : { name: DEFAULT_NAMES[i], cpu: true });
+  NET.seatPeer = seats.map((_, i) => NET.members[i] ? NET.members[i].id : null);
+  NET.inGame = true;
+  ME = 0;
+  newGame(seats, true);
+}
+
+function backToLobby() {
+  NET.inGame = false;
+  // 接続が切れた人は外す
+  NET.members = NET.members.filter(m => m.id === 'host' || NET.conns.some(c => c.peer === m.id && c.open));
+  NET.count = Math.max(2, Math.min(MAX_SEATS, G.n));
+  G = null;
+  showLobby();
+}
+
+// 席ごとに見せてよい情報だけにした状態(山札の中身・伏せたイベント・他人のランチ予定は送らない)
+function stateFor(seat) {
+  const end = G.phase === 'end';
+  return {
+    n: G.n, uid: G.uid, lap: G.lap, phase: G.phase, current: G.current, pending: G.pending,
+    online: true, gid: G.gid, startPlayer: G.startPlayer,
+    squares: G.squares, stacks: G.stacks, round: G.round, roundNo: G.roundNo, acted: [...G.acted],
+    finish: G.finish, log: G.log.slice(0, 120), revealed: G.revealed,
+    deckCount: G.deck.length, eventsCount: G.events.length,
+    players: G.players.map(p => ({
+      ...p,
+      lunch: p.lunch ? (end || p.i === seat ? p.lunch.id : 'hidden') : null,
+      lunchOpts: p.i === seat ? p.lunchOpts.map(l => l.id) : [],
+    })),
+    result: G.result ? { winners: G.result.winners, res: G.result.res.map(r => ({ pi: r.p.i, s: r.s })) } : null,
+  };
+}
+
+function syncAll() {
+  NET.seatPeer.forEach((id, seat) => {
+    const c = id && NET.conns.find(x => x.peer === id);
+    if (c && c.open) c.send({ type: 'sync', seat, state: stateFor(seat) });
+  });
+}
+
+// ---------- ゲスト ----------
+function joinRoom() {
+  if (!needPeer()) return;
+  const code = $('#net-code').value.trim().toUpperCase();
+  if (!/^[A-Z0-9]{4}$/.test(code)) { toast('4文字の招待コードを入れてください'); return; }
+  $('#btn-join').disabled = true;
+  const name = netName();
+  const peer = new Peer();
+  let opened = false;
+  peer.on('open', () => {
+    const hostConn = peer.connect(ROOM_PREFIX + code, { reliable: true });
+    NET = { role: 'guest', peer, code, hostConn, members: [], myName: name };
+    setTimeout(() => { if (!opened && NET && NET.peer === peer) leaveNet('部屋が見つかりません。招待コードを確認してください。'); }, 10000);
+    hostConn.on('open', () => {
+      opened = true;
+      NET.lastHost = Date.now();
+      hostConn.send({ type: 'join', name });
+      NET.hb = setInterval(() => {
+        if (Date.now() - NET.lastHost > SILENT_LIMIT + HEARTBEAT) leaveNet('部屋との接続が切れました。同じ名前で入り直すと、続きから遊べます。');
+        else if (hostConn.open) hostConn.send({ type: 'ping' });
+      }, HEARTBEAT);
+    });
+    hostConn.on('data', onHostData);
+    hostConn.on('close', () => { if (NET && NET.peer === peer) leaveNet('部屋との接続が切れました。'); });
+  });
+  peer.on('error', err => {
+    netError(err);
+    if (!opened) leaveNet();
+  });
+}
+
+function onHostData(d) {
+  if (!NET || !d) return;
+  NET.lastHost = Date.now();
+  if (d.type === 'error') { leaveNet(d.msg); return; }
+  if (d.type === 'toast') { toast(d.html); return; }
+  if (d.type === 'lobby') {
+    NET.members = d.members; NET.count = d.count;
+    NET.myName = d.members.includes(NET.myName) ? NET.myName : d.members[d.members.length - 1];
+    if (G) { G = null; closeModal(); }
+    showLobby();
+    return;
+  }
+  if (d.type === 'sync') applySync(d.state, d.seat);
+}
+
+const HIDDEN_LUNCH = { hidden: true };
+const lunchById = id => LUNCHES.find(l => l.id === id) || null;
+function applySync(st, seat) {
+  const prev = G;
+  const players = st.players.map(p => ({ ...p,
+    lunch: p.lunch === 'hidden' ? HIDDEN_LUNCH : lunchById(p.lunch),
+    lunchOpts: p.lunchOpts.map(lunchById) }));
+  G = { ...st, players, acted: new Set(st.acted),
+        deck: Array(st.deckCount).fill(null), events: Array(st.eventsCount).fill(null),
+        result: st.result && { winners: st.result.winners, res: st.result.res.map(r => ({ p: players[r.pi], s: r.s })) } };
+  ME = seat;
+  if (!prev || prev.gid !== G.gid) showScreen('game');
+  if (modalKind === 'lunch' && G.phase !== 'lunch') closeModal();
+  render();
+  renderLog();
+  if (G.phase === 'end' && (!prev || prev.gid !== G.gid || prev.phase !== 'end')) showResult();
+}
+
+window.addEventListener('beforeunload', e => {
+  if (NET && (NET.role === 'guest' || NET.members.length > 1 || (G && G.online && G.phase !== 'end'))) { e.preventDefault(); e.returnValue = ''; }
+});
 
 // ================================================================
 // 準備画面
@@ -1226,6 +1605,31 @@ function renderSeats() {
 }
 $('#sel-count').onchange = renderSeats;
 renderSeats();
+function setMode(mode) {
+  document.querySelectorAll('.modes button').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
+  $('#mode-local').classList.toggle('hidden', mode !== 'local');
+  $('#mode-online').classList.toggle('hidden', mode !== 'online');
+}
+document.querySelectorAll('.modes button').forEach(b => b.onclick = () => setMode(b.dataset.mode));
+$('#btn-host').onclick = () => hostRoom();
+$('#btn-join').onclick = joinRoom;
+$('#net-code').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
+$('#net-count').onchange = () => { NET.count = +$('#net-count').value; showLobby(); };
+$('#btn-net-start').onclick = startOnline;
+$('#btn-leave').onclick = () => leaveNet();
+$('#btn-copy-link').onclick = async () => {
+  try { await navigator.clipboard.writeText(inviteUrl()); toast('招待リンクをコピーしました'); }
+  catch (_) { toast('コピーできませんでした：' + esc(inviteUrl())); }
+};
+// 招待リンク(?room=XXXX)から開いたとき
+(() => {
+  const code = new URLSearchParams(location.search).get('room');
+  if (code && /^[a-zA-Z0-9]{4}$/.test(code)) {
+    setMode('online');
+    $('#net-code').value = code.toUpperCase();
+    $('#net-name').focus();
+  }
+})();
 $('#btn-start').onclick = () => {
   const seats = [...document.querySelectorAll('.seat')].map((el, i) => ({
     name: el.querySelector('input').value.trim() || `P${i + 1}`,
